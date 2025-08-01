@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+build/
+Release/
+Debug/
+
+# Test outputs
+test-output/
+
+# Native addon files
+*.node
+src/*.mm
+src/*.cc
+src/*.cpp
+
+# Generated files
+package-lock.json
+yarn.lock
+
+# Sample files
+*.ARW
+*.raw
