@@ -22,3 +22,5 @@ yarn.lock
 # Sample files
 *.ARW
 *.raw
+
+LICENSE.md
