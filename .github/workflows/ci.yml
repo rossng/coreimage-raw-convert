@@ -29,8 +29,10 @@ jobs:
       - name: Build native addon
         run: npm run build
 
-      - name: Run tests
-        run: npm test
+      # Cannot run tests on a GitHub runner because they don't support Metal
+      # and CIRAWFilter doesn't support CPU fallback.
+      # - name: Run tests
+      #   run: npm test
 
       - name: Check formatting
         run: npm run format:check
