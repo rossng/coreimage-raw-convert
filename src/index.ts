@@ -5,16 +5,82 @@ const addon = createRequire(import.meta.url)('../build/Release/raw_converter');
 /**
  * Supported output formats for image conversion
  */
-export type OutputFormat =
-  | 'jpeg'
-  | 'jpg'
-  | 'png'
-  | 'tiff'
-  | 'tif'
-  | 'jpeg2000'
-  | 'jp2'
-  | 'heif'
-  | 'heic';
+export enum OutputFormat {
+  JPEG = 'jpeg',
+  JPG = 'jpg',
+  PNG = 'png',
+  TIFF = 'tiff',
+  TIF = 'tif',
+  JPEG2000 = 'jpeg2000',
+  JP2 = 'jp2',
+  HEIF = 'heif',
+  HEIC = 'heic',
+}
+
+/**
+ * Quality settings for JPEG formats
+ */
+export interface JpegQualityOptions {
+  /** Compression quality (0.0-1.0, where 1.0 is highest quality) */
+  quality?: number;
+  /** Enable thumbnail embedding (default: false) */
+  embedThumbnail?: boolean;
+  /** Optimize color for sharing (default: false) */
+  optimizeColorForSharing?: boolean;
+}
+
+/**
+ * Quality settings for HEIF/HEIC formats
+ */
+export interface HeifQualityOptions {
+  /** Compression quality (0.0-1.0, where 1.0 is highest quality) */
+  quality?: number;
+  /** Enable thumbnail embedding (default: false) */
+  embedThumbnail?: boolean;
+  /** Optimize color for sharing (default: false) */
+  optimizeColorForSharing?: boolean;
+}
+
+/**
+ * Quality settings for JPEG2000 formats
+ */
+export interface Jpeg2000QualityOptions {
+  /** Compression quality (0.0-1.0, where 1.0 is highest quality) */
+  quality?: number;
+  /** Optimize color for sharing (default: false) */
+  optimizeColorForSharing?: boolean;
+}
+
+/**
+ * Quality settings for PNG format (lossless)
+ */
+export interface PngQualityOptions {
+  /** Optimize color for sharing (default: false) */
+  optimizeColorForSharing?: boolean;
+}
+
+/**
+ * Quality settings for TIFF format (lossless)
+ */
+export interface TiffQualityOptions {
+  /** Optimize color for sharing (default: false) */
+  optimizeColorForSharing?: boolean;
+}
+
+/**
+ * Mapping from format to format-specific quality options
+ */
+export type FormatQualityOptions = {
+  [OutputFormat.JPEG]: JpegQualityOptions;
+  [OutputFormat.JPG]: JpegQualityOptions;
+  [OutputFormat.HEIF]: HeifQualityOptions;
+  [OutputFormat.HEIC]: HeifQualityOptions;
+  [OutputFormat.JPEG2000]: Jpeg2000QualityOptions;
+  [OutputFormat.JP2]: Jpeg2000QualityOptions;
+  [OutputFormat.PNG]: PngQualityOptions;
+  [OutputFormat.TIFF]: TiffQualityOptions;
+  [OutputFormat.TIF]: TiffQualityOptions;
+};
 
 /**
  * Configuration options for RAW image conversion
@@ -73,29 +139,38 @@ export interface ConversionOptions {
 }
 
 /**
+ * Internal options interface that combines conversion options with quality options
+ */
+interface InternalConversionOptions extends ConversionOptions {
+  quality?: number;
+  embedThumbnail?: boolean;
+  optimizeColorForSharing?: boolean;
+}
+
+/**
  * Native addon interface
  */
 interface RawConverterAddon {
   convertRaw(
     rawImageBuffer: Buffer,
     format: string,
-    options: ConversionOptions
+    options: InternalConversionOptions
   ): Buffer;
 }
 
 /**
- * Convert a RAW image buffer to the specified format
+ * Convert a RAW image buffer to the specified format with type-safe options
  * @param rawImageBuffer - Buffer containing RAW image data
- * @param format - Output format. Supported formats: 'jpeg', 'jpg', 'png', 'tiff', 'tif', 'jpeg2000', 'jp2', 'heif', 'heic'
- * @param options - Conversion options
- * @throws {TypeError} If rawImageBuffer is not a Buffer or format is not a string
+ * @param format - Output format (enum value)
+ * @param options - Format-specific conversion options
+ * @throws {TypeError} If rawImageBuffer is not a Buffer
  * @throws {Error} If the buffer is empty or format is unsupported
  * @returns Buffer containing image data in the specified format
  */
-export function convertRaw(
+export function convertRaw<F extends OutputFormat>(
   rawImageBuffer: Buffer,
-  format: OutputFormat,
-  options: ConversionOptions = {}
+  format: F,
+  options?: ConversionOptions & FormatQualityOptions[F]
 ): Buffer {
   if (!Buffer.isBuffer(rawImageBuffer)) {
     throw new TypeError('Input must be a Buffer');
@@ -110,17 +185,7 @@ export function convertRaw(
   }
 
   const normalizedFormat = format.toLowerCase().trim() as OutputFormat;
-  const supportedFormats: OutputFormat[] = [
-    'jpeg',
-    'jpg',
-    'png',
-    'tiff',
-    'tif',
-    'jpeg2000',
-    'jp2',
-    'heif',
-    'heic',
-  ];
+  const supportedFormats = Object.values(OutputFormat);
 
   if (!supportedFormats.includes(normalizedFormat)) {
     throw new Error(
@@ -128,14 +193,17 @@ export function convertRaw(
     );
   }
 
-  if (options !== null && typeof options !== 'object') {
+  // Handle options
+  const mergedOptions: InternalConversionOptions = options || {};
+
+  if (mergedOptions !== null && typeof mergedOptions !== 'object') {
     throw new TypeError('Options must be an object');
   }
 
   return (addon as RawConverterAddon).convertRaw(
     rawImageBuffer,
     normalizedFormat,
-    options
+    mergedOptions
   );
 }
 
@@ -150,5 +218,5 @@ export function convertRawToJpeg(
   rawImageBuffer: Buffer,
   options: ConversionOptions = {}
 ): Buffer {
-  return convertRaw(rawImageBuffer, 'jpeg', options);
+  return convertRaw(rawImageBuffer, OutputFormat.JPEG, options);
 }

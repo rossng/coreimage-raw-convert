@@ -1,8 +1,8 @@
 import assert from 'assert';
 import fs from 'fs';
 import path from 'path';
-import { convertRaw, convertRawToJpeg, type OutputFormat } from './index.js';
 import { loadSampleImage } from './examples/load-image.js';
+import { convertRaw, convertRawToJpeg, OutputFormat } from './index.js';
 
 const TEST_OUTPUT_DIR = 'test-output';
 const TEST_OUTPUT_FILE = path.join(TEST_OUTPUT_DIR, 'test_output.jpg');
@@ -89,7 +89,7 @@ function runTests(): void {
   console.log('Test 6: Testing different output formats...');
 
   // Test JPEG format
-  const jpegBuffer2 = convertRaw(rawBuffer, 'jpeg');
+  const jpegBuffer2 = convertRaw(rawBuffer, OutputFormat.JPEG);
   assert(Buffer.isBuffer(jpegBuffer2), 'JPEG format conversion failed');
   assert(jpegBuffer2.length > 0, 'JPEG format buffer is empty');
   assert(
@@ -99,7 +99,7 @@ function runTests(): void {
   console.log('✓ JPEG format works');
 
   // Test PNG format
-  const pngBuffer = convertRaw(rawBuffer, 'png');
+  const pngBuffer = convertRaw(rawBuffer, OutputFormat.PNG);
   assert(Buffer.isBuffer(pngBuffer), 'PNG format conversion failed');
   assert(pngBuffer.length > 0, 'PNG format buffer is empty');
   assert(
@@ -113,7 +113,7 @@ function runTests(): void {
   console.log('✓ PNG format works');
 
   // Test TIFF format
-  const tiffBuffer = convertRaw(rawBuffer, 'tiff');
+  const tiffBuffer = convertRaw(rawBuffer, OutputFormat.TIFF);
   assert(Buffer.isBuffer(tiffBuffer), 'TIFF format conversion failed');
   assert(tiffBuffer.length > 0, 'TIFF format buffer is empty');
   // TIFF can be little-endian (II) or big-endian (MM)
@@ -124,7 +124,7 @@ function runTests(): void {
 
   // Test HEIF format
   try {
-    const heifBuffer = convertRaw(rawBuffer, 'heif');
+    const heifBuffer = convertRaw(rawBuffer, OutputFormat.HEIF);
     assert(Buffer.isBuffer(heifBuffer), 'HEIF format conversion failed');
     assert(heifBuffer.length > 0, 'HEIF format buffer is empty');
     fs.writeFileSync(
@@ -163,7 +163,7 @@ function runTests(): void {
   console.log('Test 7: Testing various conversion options...');
 
   // Test with lens correction
-  const jpegWithLensCorrection = convertRaw(rawBuffer, 'jpeg', {
+  const jpegWithLensCorrection = convertRaw(rawBuffer, OutputFormat.JPEG, {
     lensCorrection: true,
   });
   assert(
@@ -177,7 +177,9 @@ function runTests(): void {
   console.log('✓ Lens correction enabled works');
 
   // Test with exposure adjustment
-  const jpegWithExposure = convertRaw(rawBuffer, 'jpeg', { exposure: 1.0 });
+  const jpegWithExposure = convertRaw(rawBuffer, OutputFormat.JPEG, {
+    exposure: 1.0,
+  });
   assert(
     Buffer.isBuffer(jpegWithExposure),
     'Exposure adjustment conversion failed'
@@ -186,13 +188,15 @@ function runTests(): void {
   console.log('✓ Exposure adjustment works');
 
   // Test with boost adjustment
-  const jpegWithBoost = convertRaw(rawBuffer, 'jpeg', { boost: 0.5 });
+  const jpegWithBoost = convertRaw(rawBuffer, OutputFormat.JPEG, {
+    boost: 0.5,
+  });
   assert(Buffer.isBuffer(jpegWithBoost), 'Boost adjustment conversion failed');
   assert(jpegWithBoost.length > 0, 'Boost adjustment buffer is empty');
   console.log('✓ Boost adjustment works');
 
   // Test with shadow boost
-  const jpegWithShadowBoost = convertRaw(rawBuffer, 'jpeg', {
+  const jpegWithShadowBoost = convertRaw(rawBuffer, OutputFormat.JPEG, {
     boostShadowAmount: 0.3,
   });
   assert(
@@ -203,7 +207,7 @@ function runTests(): void {
   console.log('✓ Shadow boost works');
 
   // Test with noise reduction
-  const jpegWithNoiseReduction = convertRaw(rawBuffer, 'jpeg', {
+  const jpegWithNoiseReduction = convertRaw(rawBuffer, OutputFormat.JPEG, {
     colorNoiseReductionAmount: 0.5,
     luminanceNoiseReductionAmount: 0.3,
   });
@@ -215,7 +219,7 @@ function runTests(): void {
   console.log('✓ Noise reduction works');
 
   // Test with temperature adjustment
-  const jpegWithTemp = convertRaw(rawBuffer, 'jpeg', {
+  const jpegWithTemp = convertRaw(rawBuffer, OutputFormat.JPEG, {
     neutralTemperature: 5500,
   });
   assert(
@@ -226,7 +230,7 @@ function runTests(): void {
   console.log('✓ Temperature adjustment works');
 
   // Test with multiple options
-  const jpegMultiOptions = convertRaw(rawBuffer, 'jpeg', {
+  const jpegMultiOptions = convertRaw(rawBuffer, OutputFormat.JPEG, {
     lensCorrection: false,
     exposure: -0.5,
     boost: 0.8,
@@ -242,7 +246,7 @@ function runTests(): void {
   // Test invalid options type
   assert.throws(
     () => {
-      convertRaw(rawBuffer, 'jpeg', 'invalid options' as any);
+      convertRaw(rawBuffer, OutputFormat.JPEG, 'invalid options' as any);
     },
     /Options must be an object/,
     'Should throw error for invalid options type'
@@ -260,7 +264,7 @@ function runTests(): void {
   const iterations = 3;
 
   for (let i = 0; i < iterations; i++) {
-    convertRaw(rawBuffer, 'jpeg');
+    convertRaw(rawBuffer, OutputFormat.JPEG);
   }
 
   const totalTime = Date.now() - startTime;

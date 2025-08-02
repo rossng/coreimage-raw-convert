@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { convertRaw, type OutputFormat } from '../index.js';
+import { convertRaw, OutputFormat } from '../index.js';
 
 interface FormatMap {
   [key: string]: OutputFormat;
@@ -22,10 +22,10 @@ async function convertRawFile(
 
     // Map common extensions to supported format names
     const formatMap: FormatMap = {
-      jpg: 'jpeg',
-      tif: 'tiff',
-      jp2: 'jpeg2000',
-      heic: 'heif',
+      jpg: OutputFormat.JPEG,
+      tif: OutputFormat.TIFF,
+      jp2: OutputFormat.JPEG2000,
+      heic: OutputFormat.HEIF,
     };
 
     if (formatMap[ext]) {
@@ -34,11 +34,11 @@ async function convertRawFile(
 
     // Validate format
     const supportedFormats: OutputFormat[] = [
-      'jpeg',
-      'png',
-      'tiff',
-      'jpeg2000',
-      'heif',
+      OutputFormat.JPEG,
+      OutputFormat.PNG,
+      OutputFormat.TIFF,
+      OutputFormat.JPEG2000,
+      OutputFormat.HEIF,
     ];
     if (!supportedFormats.includes(format)) {
       throw new Error(

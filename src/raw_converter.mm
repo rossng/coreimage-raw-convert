@@ -44,6 +44,11 @@ NAN_METHOD(ConvertRaw) {
     double localToneMapAmount = -1.0; // -1 means use default
     double scaleFactor = 1.0; // Default to 1.0 (no scaling)
     
+    // Quality options
+    double quality = -1.0; // -1 means use default (0.9 for lossy formats)
+    bool embedThumbnail = false;
+    bool optimizeColorForSharing = false;
+    
     if (info.Length() >= 3 && info[2]->IsObject()) {
         Local<Object> options = info[2].As<Object>();
         
@@ -89,6 +94,11 @@ NAN_METHOD(ConvertRaw) {
         getNumberOption("noiseReductionAmount", noiseReductionAmount);
         getNumberOption("localToneMapAmount", localToneMapAmount);
         getNumberOption("scaleFactor", scaleFactor);
+        
+        // Extract quality options
+        getNumberOption("quality", quality);
+        getBoolOption("embedThumbnail", embedThumbnail);
+        getBoolOption("optimizeColorForSharing", optimizeColorForSharing);
     }
     
     Local<Object> bufferObj = info[0].As<Object>();
@@ -263,8 +273,21 @@ NAN_METHOD(ConvertRaw) {
         
         // Set format-specific properties
         NSMutableDictionary* properties = [NSMutableDictionary dictionary];
-        if (format == "jpeg" || format == "jpg" || format == "heif" || format == "heic") {
-            properties[(__bridge NSString*)kCGImageDestinationLossyCompressionQuality] = @0.9;
+        
+        // Set compression quality for lossy formats
+        if (format == "jpeg" || format == "jpg" || format == "heif" || format == "heic" || format == "jpeg2000" || format == "jp2") {
+            double compressionQuality = (quality >= 0.0) ? quality : 0.9; // Default to 0.9 if not specified
+            properties[(__bridge NSString*)kCGImageDestinationLossyCompressionQuality] = @(compressionQuality);
+        }
+        
+        // Set thumbnail embedding for JPEG and HEIF formats
+        if ((format == "jpeg" || format == "jpg" || format == "heif" || format == "heic") && embedThumbnail) {
+            properties[(__bridge NSString*)kCGImageDestinationEmbedThumbnail] = @YES;
+        }
+        
+        // Set optimize color for sharing for all formats
+        if (optimizeColorForSharing) {
+            properties[(__bridge NSString*)kCGImageDestinationOptimizeColorForSharing] = @YES;
         }
         
         CGImageDestinationAddImage(destination, cgImage, (__bridge CFDictionaryRef)properties);
