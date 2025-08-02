@@ -1,3 +1,10 @@
+## [2.0.1](https://github.com/rossng/coreimage-raw-convert/compare/v2.0.0...v2.0.1) (2025-08-02)
+
+
+### Bug Fixes
+
+* cleanup README ([3158ca3](https://github.com/rossng/coreimage-raw-convert/commit/3158ca3b1088a80b135db47e3090b6552a8328c1))
+
 # [2.0.0](https://github.com/rossng/coreimage-raw-convert/compare/v1.2.0...v2.0.0) (2025-08-02)
 
 
