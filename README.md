@@ -19,6 +19,14 @@ A Node.js native addon for converting RAW images to JPEG using macOS Core Image 
 
 ## Usage
 
+Install:
+
+```bash
+npm i coreimage-raw-convert
+```
+
+Use:
+
 ```javascript
 import fs from 'fs';
 import { convertRawToJpeg } from 'coreimage-raw-convert';
