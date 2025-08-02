@@ -12,6 +12,75 @@ NAN_METHOD(ConvertRawToJpeg) {
         return;
     }
     
+    // Parse options if provided
+    // Default values
+    bool enableLensCorrection = true;
+    double exposureValue = 0.0;
+    double boostValue = 1.0;
+    double boostShadowAmount = 0.0;
+    double baselineExposure = 0.0;
+    double neutralTemperature = -1.0; // -1 means use default
+    double neutralTint = -1.0; // -1 means use default
+    bool disableGamutMap = false;
+    bool allowDraftMode = false;
+    bool ignoreImageOrientation = false;
+    
+    // New options
+    double colorNoiseReductionAmount = -1.0; // -1 means use default
+    double luminanceNoiseReductionAmount = -1.0; // -1 means use default
+    double contrastAmount = -1.0; // -1 means use default
+    double sharpnessAmount = -1.0; // -1 means use default
+    double noiseReductionAmount = -1.0; // -1 means use default
+    double localToneMapAmount = -1.0; // -1 means use default
+    double scaleFactor = 1.0; // Default to 1.0 (no scaling)
+    
+    if (info.Length() >= 2 && info[1]->IsObject()) {
+        Local<Object> options = info[1].As<Object>();
+        
+        // Helper lambda to extract boolean option
+        auto getBoolOption = [&](const char* key, bool& target) {
+            Local<String> keyStr = Nan::New(key).ToLocalChecked();
+            if (Nan::Has(options, keyStr).FromJust()) {
+                Local<Value> value = Nan::Get(options, keyStr).ToLocalChecked();
+                if (value->IsBoolean()) {
+                    target = Nan::To<bool>(value).FromJust();
+                }
+            }
+        };
+        
+        // Helper lambda to extract number option
+        auto getNumberOption = [&](const char* key, double& target) {
+            Local<String> keyStr = Nan::New(key).ToLocalChecked();
+            if (Nan::Has(options, keyStr).FromJust()) {
+                Local<Value> value = Nan::Get(options, keyStr).ToLocalChecked();
+                if (value->IsNumber()) {
+                    target = Nan::To<double>(value).FromJust();
+                }
+            }
+        };
+        
+        // Extract all options
+        getBoolOption("lensCorrection", enableLensCorrection);
+        getNumberOption("exposure", exposureValue);
+        getNumberOption("boost", boostValue);
+        getNumberOption("boostShadowAmount", boostShadowAmount);
+        getNumberOption("baselineExposure", baselineExposure);
+        getNumberOption("neutralTemperature", neutralTemperature);
+        getNumberOption("neutralTint", neutralTint);
+        getBoolOption("disableGamutMap", disableGamutMap);
+        getBoolOption("allowDraftMode", allowDraftMode);
+        getBoolOption("ignoreImageOrientation", ignoreImageOrientation);
+        
+        // Extract new options
+        getNumberOption("colorNoiseReductionAmount", colorNoiseReductionAmount);
+        getNumberOption("luminanceNoiseReductionAmount", luminanceNoiseReductionAmount);
+        getNumberOption("contrastAmount", contrastAmount);
+        getNumberOption("sharpnessAmount", sharpnessAmount);
+        getNumberOption("noiseReductionAmount", noiseReductionAmount);
+        getNumberOption("localToneMapAmount", localToneMapAmount);
+        getNumberOption("scaleFactor", scaleFactor);
+    }
+    
     Local<Object> bufferObj = info[0].As<Object>();
     char* rawData = node::Buffer::Data(bufferObj);
     size_t rawDataLength = node::Buffer::Length(bufferObj);
@@ -37,8 +106,69 @@ NAN_METHOD(ConvertRawToJpeg) {
         
         // Create RAW filter options
         NSMutableDictionary* rawOptions = [NSMutableDictionary dictionary];
-        rawOptions[kCIInputEnableVendorLensCorrectionKey] = @YES;
-        rawOptions[kCIInputBoostKey] = @1.0;
+        
+        // Basic options
+        rawOptions[kCIInputEnableVendorLensCorrectionKey] = enableLensCorrection ? @YES : @NO;
+        rawOptions[kCIInputBoostKey] = @(boostValue);
+        
+        // Exposure options
+        rawOptions[kCIInputEVKey] = @(exposureValue);
+        if (baselineExposure != 0.0) {
+            rawOptions[kCIInputBaselineExposureKey] = @(baselineExposure);
+        }
+        if (boostShadowAmount != 0.0) {
+            rawOptions[kCIInputBoostShadowAmountKey] = @(boostShadowAmount);
+        }
+        
+        // Color options
+        if (neutralTemperature >= 0) {
+            rawOptions[kCIInputNeutralTemperatureKey] = @(neutralTemperature);
+        }
+        if (neutralTint >= 0) {
+            rawOptions[kCIInputNeutralTintKey] = @(neutralTint);
+        }
+        
+        // Other options
+        if (disableGamutMap) {
+            rawOptions[kCIInputDisableGamutMapKey] = @YES;
+        }
+        if (allowDraftMode) {
+            rawOptions[kCIInputAllowDraftModeKey] = @YES;
+        }
+        if (ignoreImageOrientation) {
+            rawOptions[kCIInputIgnoreImageOrientationKey] = @YES;
+        }
+        
+        // Noise reduction options
+        if (colorNoiseReductionAmount >= 0) {
+            rawOptions[kCIInputColorNoiseReductionAmountKey] = @(colorNoiseReductionAmount);
+        }
+        if (luminanceNoiseReductionAmount >= 0) {
+            rawOptions[kCIInputLuminanceNoiseReductionAmountKey] = @(luminanceNoiseReductionAmount);
+        }
+        
+        // Enhancement options
+        if (contrastAmount >= 0) {
+            rawOptions[kCIInputContrastKey] = @(contrastAmount);
+        }
+        if (sharpnessAmount >= 0) {
+            rawOptions[kCIInputSharpnessKey] = @(sharpnessAmount);
+        }
+        
+        // Additional processing options
+        if (noiseReductionAmount >= 0) {
+            rawOptions[kCIInputNoiseReductionAmountKey] = @(noiseReductionAmount);
+        }
+        
+        if (@available(macOS 11.1, *)) {
+            if (localToneMapAmount >= 0) {
+                rawOptions[kCIInputLocalToneMapAmountKey] = @(localToneMapAmount);
+            }
+        }
+        
+        if (scaleFactor != 1.0) {
+            rawOptions[kCIInputScaleFactorKey] = @(scaleFactor);
+        }
         
         if (@available(macOS 10.14, *)) {
             rawOptions[kCIInputEnableEDRModeKey] = @NO;
