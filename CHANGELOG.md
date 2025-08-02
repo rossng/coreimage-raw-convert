@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/rossng/coreimage-raw-convert/compare/v1.1.0...v1.2.0) (2025-08-02)
+
+
+### Features
+
+* add `convertRaw` format that supports multiple output formats, deprecate `convertRawToJpeg` ([4ac8b81](https://github.com/rossng/coreimage-raw-convert/commit/4ac8b8150799a3b58ef72a3f71f23765ba09457e))
+
 # [1.1.0](https://github.com/rossng/coreimage-raw-convert/compare/v1.0.0...v1.1.0) (2025-08-02)
 
 
