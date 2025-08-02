@@ -283,6 +283,28 @@ app.get('/', (_: Request, res: Response) => {
           <option value="heif">HEIF/HEIC</option>
         </select>
       </div>
+      
+      <div class="control-group" id="qualityGroup">
+        <label for="quality">Quality (0.0-1.0)</label>
+        <div class="slider-container">
+          <input type="range" id="quality" min="0" max="1" step="0.01" value="0.9">
+          <span class="slider-value" id="qualityValue">0.90</span>
+        </div>
+      </div>
+      
+      <div class="control-group" id="embedThumbnailGroup">
+        <label>
+          <input type="checkbox" id="embedThumbnail">
+          <span class="checkbox-label">Embed Thumbnail</span>
+        </label>
+      </div>
+      
+      <div class="control-group" id="optimizeColorGroup">
+        <label>
+          <input type="checkbox" id="optimizeColorForSharing">
+          <span class="checkbox-label">Optimize Color for Sharing</span>
+        </label>
+      </div>
     </div>
     
     <div class="image-container">
@@ -300,6 +322,8 @@ app.get('/', (_: Request, res: Response) => {
       document.getElementById('disableGamutMap').checked = false;
       document.getElementById('allowDraftMode').checked = false;
       document.getElementById('ignoreImageOrientation').checked = false;
+      document.getElementById('embedThumbnail').checked = false;
+      document.getElementById('optimizeColorForSharing').checked = false;
       
       // Reset sliders and their displayed values
       const sliderDefaults = {
@@ -312,7 +336,8 @@ app.get('/', (_: Request, res: Response) => {
         'contrastAmount': '1',
         'sharpnessAmount': '1',
         'noiseReductionAmount': '0.5',
-        'localToneMapAmount': '0'
+        'localToneMapAmount': '0',
+        'quality': '0.9'
       };
       
       Object.entries(sliderDefaults).forEach(([id, value]) => {
@@ -329,6 +354,9 @@ app.get('/', (_: Request, res: Response) => {
       
       // Reset format dropdown
       document.getElementById('outputFormat').value = 'jpeg';
+      
+      // Update quality options visibility after reset
+      updateQualityOptionsVisibility();
     }
     
     // Update slider values
@@ -338,6 +366,31 @@ app.get('/', (_: Request, res: Response) => {
         valueSpan.textContent = slider.value;
       });
     });
+    
+    // Function to update quality options visibility based on format
+    function updateQualityOptionsVisibility() {
+      const format = document.getElementById('outputFormat').value;
+      const qualityGroup = document.getElementById('qualityGroup');
+      const embedThumbnailGroup = document.getElementById('embedThumbnailGroup');
+      const optimizeColorGroup = document.getElementById('optimizeColorGroup');
+      
+      // Quality slider is available for JPEG, HEIF, and JPEG2000 formats
+      const qualityFormats = ['jpeg', 'heif', 'jpeg2000'];
+      qualityGroup.style.display = qualityFormats.includes(format) ? 'block' : 'none';
+      
+      // Embed thumbnail is available for JPEG and HEIF formats
+      const thumbnailFormats = ['jpeg', 'heif'];
+      embedThumbnailGroup.style.display = thumbnailFormats.includes(format) ? 'block' : 'none';
+      
+      // Optimize color for sharing is available for all formats
+      optimizeColorGroup.style.display = 'block';
+    }
+    
+    // Add event listener for format changes
+    document.getElementById('outputFormat').addEventListener('change', updateQualityOptionsVisibility);
+    
+    // Initialize quality options visibility
+    updateQualityOptionsVisibility();
     
     function showStatus(message, type = 'info') {
       const status = document.getElementById('status');
@@ -371,6 +424,20 @@ app.get('/', (_: Request, res: Response) => {
         ignoreImageOrientation: document.getElementById('ignoreImageOrientation').checked,
         scaleFactor: parseFloat(document.getElementById('scaleFactor').value)
       };
+      
+      // Add quality options based on format
+      const qualityFormats = ['jpeg', 'heif', 'jpeg2000'];
+      if (qualityFormats.includes(format)) {
+        options.quality = parseFloat(document.getElementById('quality').value);
+      }
+      
+      const thumbnailFormats = ['jpeg', 'heif'];
+      if (thumbnailFormats.includes(format)) {
+        options.embedThumbnail = document.getElementById('embedThumbnail').checked;
+      }
+      
+      // All formats support optimizeColorForSharing
+      options.optimizeColorForSharing = document.getElementById('optimizeColorForSharing').checked;
       
       // Add optional numeric values if they have been set
       const neutralTemp = document.getElementById('neutralTemperature').value;
