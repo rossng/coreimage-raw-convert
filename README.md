@@ -2,6 +2,8 @@
 
 A Node.js native addon for converting RAW images to JPEG using macOS Core Image framework.
 
+[preview.webm](https://github.com/user-attachments/assets/793a76c0-6b81-47ea-b155-02445fe38a48)
+
 ## Features
 
 - Uses macOS Core Image's CIRAWFilter for RAW processing
