@@ -3,15 +3,17 @@ import { loadSampleImage } from './load-image.js';
 
 const ITERATIONS = 5;
 
-interface FormatConfig {
-  name: string;
-  ext: OutputFormat;
+interface CliOptions {
+  lensCorrection: boolean[];
+  quality: number[];
+  format: OutputFormat[];
 }
 
 interface TestConfig {
   name: string;
   lensCorrection: boolean;
   allowDraftMode: boolean;
+  quality?: number;
 }
 
 interface BenchmarkResult {
@@ -23,33 +25,158 @@ interface BenchmarkResult {
   outputSize: number;
 }
 
-const formats: FormatConfig[] = [
-  { name: 'JPEG', ext: OutputFormat.JPEG },
-  { name: 'PNG', ext: OutputFormat.PNG },
-  { name: 'TIFF', ext: OutputFormat.TIFF },
-  { name: 'JPEG 2000', ext: OutputFormat.JPEG2000 },
-  { name: 'HEIF', ext: OutputFormat.HEIF },
-];
+function parseCliOptions(): CliOptions {
+  const args = process.argv.slice(2);
+  const options: CliOptions = {
+    lensCorrection: [true, false],
+    quality: [0.8],
+    format: [
+      OutputFormat.JPEG,
+      OutputFormat.PNG,
+      OutputFormat.TIFF,
+      OutputFormat.JPEG2000,
+      OutputFormat.HEIF,
+    ],
+  };
 
-const testConfigs: TestConfig[] = [
-  { name: 'Standard + Lens', lensCorrection: true, allowDraftMode: false },
-  { name: 'Standard - Lens', lensCorrection: false, allowDraftMode: false },
-  { name: 'Draft + Lens', lensCorrection: true, allowDraftMode: true },
-  { name: 'Draft - Lens', lensCorrection: false, allowDraftMode: true },
-];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    const value = args[i + 1];
+
+    switch (arg) {
+      case '--lens-correction':
+        if (value) {
+          options.lensCorrection = value
+            .split(',')
+            .map((v) => v.trim().toLowerCase() === 'true');
+          i++;
+        }
+        break;
+      case '--quality':
+        if (value) {
+          options.quality = value.split(',').map((v) => parseFloat(v.trim()));
+          i++;
+        }
+        break;
+      case '--format':
+        if (value) {
+          const formatMap: Record<string, OutputFormat> = {
+            jpeg: OutputFormat.JPEG,
+            jpg: OutputFormat.JPG,
+            png: OutputFormat.PNG,
+            tiff: OutputFormat.TIFF,
+            tif: OutputFormat.TIF,
+            jpeg2000: OutputFormat.JPEG2000,
+            jp2: OutputFormat.JP2,
+            heif: OutputFormat.HEIF,
+            heic: OutputFormat.HEIC,
+          };
+          options.format = value.split(',').map((v) => {
+            const format = formatMap[v.trim().toLowerCase()];
+            if (!format) {
+              throw new Error(`Unsupported format: ${v.trim()}`);
+            }
+            return format;
+          });
+          i++;
+        }
+        break;
+    }
+  }
+
+  return options;
+}
+
+function getFormatDisplayName(format: OutputFormat): string {
+  const displayNames: Record<OutputFormat, string> = {
+    [OutputFormat.JPEG]: 'JPEG',
+    [OutputFormat.JPG]: 'JPEG',
+    [OutputFormat.PNG]: 'PNG',
+    [OutputFormat.TIFF]: 'TIFF',
+    [OutputFormat.TIF]: 'TIFF',
+    [OutputFormat.JPEG2000]: 'JPEG 2000',
+    [OutputFormat.JP2]: 'JPEG 2000',
+    [OutputFormat.HEIF]: 'HEIF',
+    [OutputFormat.HEIC]: 'HEIF',
+  };
+  return displayNames[format];
+}
+
+function generateTestConfigs(cliOptions: CliOptions): TestConfig[] {
+  const configs: TestConfig[] = [];
+
+  for (const lensCorrection of cliOptions.lensCorrection) {
+    for (const quality of cliOptions.quality) {
+      const qualityStr = quality !== 0.8 ? ` Q${quality}` : '';
+      const lensStr = lensCorrection ? ' +Lens' : ' -Lens';
+      configs.push({
+        name: `Standard${qualityStr}${lensStr}`,
+        lensCorrection,
+        allowDraftMode: false,
+        quality,
+      });
+    }
+  }
+
+  return configs;
+}
 
 async function benchmark(): Promise<void> {
+  const cliOptions = parseCliOptions();
+  const testConfigs = generateTestConfigs(cliOptions);
+
   console.log('Loading RAW image...');
   const rawBuffer = loadSampleImage();
   console.log(
     `RAW image size: ${(rawBuffer.length / 1024 / 1024).toFixed(2)} MB\n`
   );
 
+  console.log('Benchmark configuration:');
+  console.log(
+    `  Formats: ${cliOptions.format.map(getFormatDisplayName).join(', ')}`
+  );
+  console.log(`  Lens correction: ${cliOptions.lensCorrection.join(', ')}`);
+  console.log(`  Quality levels: ${cliOptions.quality.join(', ')}`);
+  console.log();
+
+  // JIT warmup runs
+  console.log('Warming up JIT...');
+  const warmupFormat = cliOptions.format[0];
+  const warmupConfig = testConfigs[0];
+
+  for (let i = 0; i < 3; i++) {
+    try {
+      const conversionOptions: any = {
+        lensCorrection: warmupConfig.lensCorrection,
+        allowDraftMode: warmupConfig.allowDraftMode,
+      };
+
+      if (
+        warmupConfig.quality &&
+        (warmupFormat === OutputFormat.JPEG ||
+          warmupFormat === OutputFormat.JPG ||
+          warmupFormat === OutputFormat.HEIF ||
+          warmupFormat === OutputFormat.HEIC ||
+          warmupFormat === OutputFormat.JPEG2000 ||
+          warmupFormat === OutputFormat.JP2)
+      ) {
+        conversionOptions.quality = warmupConfig.quality;
+      }
+
+      convertRaw(rawBuffer, warmupFormat, conversionOptions);
+    } catch (error) {
+      console.warn(`Warmup run ${i + 1} failed: ${(error as Error).message}`);
+    }
+  }
+  console.log('JIT warmup complete.\n');
+
   const results: BenchmarkResult[] = [];
 
-  for (const format of formats) {
+  for (const format of cliOptions.format) {
+    const formatName = getFormatDisplayName(format);
+
     for (const config of testConfigs) {
-      console.log(`Benchmarking ${format.name} - ${config.name}...`);
+      console.log(`Benchmarking ${formatName} - ${config.name}...`);
 
       const times: number[] = [];
       let outputSize = 0;
@@ -58,10 +185,25 @@ async function benchmark(): Promise<void> {
         const start = process.hrtime.bigint();
 
         try {
-          const result = convertRaw(rawBuffer, format.ext, {
+          const conversionOptions: any = {
             lensCorrection: config.lensCorrection,
             allowDraftMode: config.allowDraftMode,
-          });
+          };
+
+          // Add quality option for formats that support it
+          if (
+            config.quality &&
+            (format === OutputFormat.JPEG ||
+              format === OutputFormat.JPG ||
+              format === OutputFormat.HEIF ||
+              format === OutputFormat.HEIC ||
+              format === OutputFormat.JPEG2000 ||
+              format === OutputFormat.JP2)
+          ) {
+            conversionOptions.quality = config.quality;
+          }
+
+          const result = convertRaw(rawBuffer, format, conversionOptions);
 
           const end = process.hrtime.bigint();
           const duration = Number(end - start) / 1_000_000; // Convert to milliseconds
@@ -73,7 +215,7 @@ async function benchmark(): Promise<void> {
           }
         } catch (error) {
           console.error(
-            `  Error converting to ${format.name}: ${(error as Error).message}`
+            `  Error converting to ${formatName}: ${(error as Error).message}`
           );
           break;
         }
@@ -85,7 +227,7 @@ async function benchmark(): Promise<void> {
         const maxTime = Math.max(...times);
 
         results.push({
-          format: format.name,
+          format: formatName,
           config: config.name,
           avgTime,
           minTime,
