@@ -3,15 +3,19 @@
   "version": "1.2.0",
   "description": "Node.js native addon for converting RAW images to JPEG using Core Image",
   "type": "module",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "configure": "node-gyp configure",
     "build": "node-gyp build",
     "rebuild": "node-gyp rebuild",
-    "test": "node test.js",
+    "build:ts": "tsc",
+    "build:all": "npm run rebuild && npm run build:ts",
+    "test": "npm run build:ts && node dist/test.js",
     "install": "node-gyp rebuild",
-    "format": "prettier --write \"**/*.{js,json,md}\"",
-    "format:check": "prettier --check \"**/*.{js,json,md}\""
+    "format": "prettier --write \"**/*.{js,ts,json,md}\"",
+    "format:check": "prettier --check \"**/*.{js,ts,json,md}\"",
+    "clean": "rm -rf dist"
   },
   "keywords": [
     "raw",
@@ -30,10 +34,14 @@
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/github": "^11.0.3",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
     "express": "^5.1.0",
     "node-gyp": "^10.0.0",
     "prettier": "^3.6.2",
-    "semantic-release": "^24.2.7"
+    "prettier-plugin-organize-imports": "^4.2.0",
+    "semantic-release": "^24.2.7",
+    "typescript": "^5.5.0"
   },
   "gypfile": true
 }

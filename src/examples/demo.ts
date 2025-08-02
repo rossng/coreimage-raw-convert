@@ -1,16 +1,23 @@
-import express from 'express';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { convertRaw } from '../index.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const exampleRawPath = path.join(__dirname, 'DSC00053.ARW');
+import express, { Request, Response } from 'express';
+import {
+  convertRaw,
+  type ConversionOptions,
+  type OutputFormat,
+} from '../index.js';
+import { loadSampleImage } from './load-image.js';
 
 const app = express();
 const PORT = 3000;
+
+interface ConvertRequest extends Request {
+  body: ConversionOptions & {
+    format?: OutputFormat;
+  };
+}
+
+interface ContentTypeMap {
+  [key: string]: string;
+}
 
 app.use(express.json());
 app.use(express.static('public'));
@@ -18,7 +25,7 @@ app.use(express.static('public'));
 // No longer storing converted image - always convert fresh
 
 // Serve the HTML page
-app.get('/', (_, res) => {
+app.get('/', (_: Request, res: Response) => {
   res.send(`
 <!DOCTYPE html>
 <html lang="en">
@@ -434,39 +441,45 @@ app.get('/', (_, res) => {
 });
 
 // Convert endpoint
-app.post('/convert', express.json(), (req, res) => {
-  if (!fs.existsSync(exampleRawPath)) {
-    return res.status(404).json({ error: `${exampleRawPath} not found` });
+app.post(
+  '/convert',
+  express.json(),
+  (req: ConvertRequest, res: Response): void => {
+    try {
+      const rawBuffer = loadSampleImage();
+      const { format = 'jpeg', ...options } = req.body || {};
+
+      const outputBuffer = convertRaw(
+        rawBuffer,
+        format as OutputFormat,
+        options
+      );
+
+      // Set appropriate content type based on format
+      const contentTypes: ContentTypeMap = {
+        jpeg: 'image/jpeg',
+        jpg: 'image/jpeg',
+        png: 'image/png',
+        tiff: 'image/tiff',
+        tif: 'image/tiff',
+        jpeg2000: 'image/jp2',
+        jp2: 'image/jp2',
+        heif: 'image/heif',
+        heic: 'image/heic',
+      };
+
+      res.type(contentTypes[format] || 'image/jpeg');
+      res.send(outputBuffer);
+    } catch (error) {
+      console.error('Conversion error:', error);
+      res.status(500).json({ error: (error as Error).message });
+    }
   }
-
-  try {
-    const rawBuffer = fs.readFileSync(exampleRawPath);
-    const { format = 'jpeg', ...options } = req.body || {};
-
-    const outputBuffer = convertRaw(rawBuffer, format, options);
-
-    // Set appropriate content type based on format
-    const contentTypes = {
-      jpeg: 'image/jpeg',
-      jpg: 'image/jpeg',
-      png: 'image/png',
-      tiff: 'image/tiff',
-      tif: 'image/tiff',
-      jpeg2000: 'image/jp2',
-      jp2: 'image/jp2',
-      heif: 'image/heif',
-      heic: 'image/heic',
-    };
-
-    res.type(contentTypes[format] || 'image/jpeg');
-    res.send(outputBuffer);
-  } catch (error) {
-    console.error('Conversion error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
+);
 
 // Start server
 app.listen(PORT, () => {
   console.log(`Demo server running at http://localhost:${PORT}`);
 });
+
+export { app };

@@ -5,6 +5,7 @@ node_modules/
 build/
 Release/
 Debug/
+dist/
 
 # Test outputs
 test-output/

@@ -1,13 +1,13 @@
+import assert from 'assert';
 import fs from 'fs';
 import path from 'path';
-import assert from 'assert';
-import { convertRaw, convertRawToJpeg } from './index.js';
+import { convertRaw, convertRawToJpeg, type OutputFormat } from './index.js';
 
 const TEST_RAW_FILE = 'examples/DSC00053.ARW';
 const TEST_OUTPUT_DIR = 'test-output';
 const TEST_OUTPUT_FILE = path.join(TEST_OUTPUT_DIR, 'test_output.jpg');
 
-function cleanup() {
+function cleanup(): void {
   const testOutputDir = 'test-output';
   if (fs.existsSync(testOutputDir)) {
     const files = fs.readdirSync(testOutputDir);
@@ -18,7 +18,7 @@ function cleanup() {
   }
 }
 
-function runTests() {
+function runTests(): void {
   console.log('Running CoreImage RAW Convert Tests...\n');
 
   const testOutputDir = path.dirname(TEST_OUTPUT_FILE);
@@ -37,11 +37,11 @@ function runTests() {
   console.log(`✓ RAW file read successfully (${rawBuffer.length} bytes)\n`);
 
   console.log('Test 3: Converting RAW to JPEG...');
-  let jpegBuffer;
+  let jpegBuffer: Buffer;
   try {
     jpegBuffer = convertRawToJpeg(rawBuffer);
   } catch (error) {
-    console.error('✗ Conversion failed:', error.message);
+    console.error('✗ Conversion failed:', (error as Error).message);
     throw error;
   }
   assert(Buffer.isBuffer(jpegBuffer), 'Conversion did not return a buffer');
@@ -65,7 +65,7 @@ function runTests() {
 
   assert.throws(
     () => {
-      convertRawToJpeg('not a buffer');
+      convertRawToJpeg('not a buffer' as any);
     },
     /Input must be a Buffer/,
     'Should throw error for non-buffer input'
@@ -144,21 +144,21 @@ function runTests() {
 
   // Test format parameter validation
   assert.throws(
-    () => convertRaw(rawBuffer, 'bmp'),
+    () => convertRaw(rawBuffer, 'bmp' as OutputFormat),
     /Unsupported format/,
     'Should throw error for unsupported format'
   );
   console.log('✓ Correctly rejects unsupported formats');
 
   assert.throws(
-    () => convertRaw(rawBuffer, ''),
+    () => convertRaw(rawBuffer, '' as OutputFormat),
     /Format must be a non-empty string/,
     'Should throw error for empty format'
   );
   console.log('✓ Correctly handles empty format string');
 
   assert.throws(
-    () => convertRaw(rawBuffer, 123),
+    () => convertRaw(rawBuffer, 123 as any),
     /Format must be a non-empty string/,
     'Should throw error for non-string format'
   );
@@ -246,7 +246,7 @@ function runTests() {
   // Test invalid options type
   assert.throws(
     () => {
-      convertRaw(rawBuffer, 'jpeg', 'invalid options');
+      convertRaw(rawBuffer, 'jpeg', 'invalid options' as any);
     },
     /Options must be an object/,
     'Should throw error for invalid options type'
@@ -285,7 +285,7 @@ try {
   cleanup();
   runTests();
 } catch (error) {
-  console.error('\n❌ Test failed:', error.message);
+  console.error('\n❌ Test failed:', (error as Error).message);
   cleanup();
   process.exit(1);
 }

@@ -1,9 +1,16 @@
 import fs from 'fs';
 import path from 'path';
-import { convertRaw } from '../index.js';
+import { convertRaw, type OutputFormat } from '../index.js';
+
+interface FormatMap {
+  [key: string]: OutputFormat;
+}
 
 // Example usage
-async function convertRawFile(inputPath, outputPath) {
+async function convertRawFile(
+  inputPath: string,
+  outputPath: string
+): Promise<void> {
   try {
     // Read the RAW file
     console.log(`Reading RAW file: ${inputPath}`);
@@ -11,10 +18,10 @@ async function convertRawFile(inputPath, outputPath) {
 
     // Determine output format from file extension
     const ext = path.extname(outputPath).toLowerCase().substring(1);
-    let format = ext;
+    let format: OutputFormat = ext as OutputFormat;
 
     // Map common extensions to supported format names
-    const formatMap = {
+    const formatMap: FormatMap = {
       jpg: 'jpeg',
       tif: 'tiff',
       jp2: 'jpeg2000',
@@ -26,7 +33,13 @@ async function convertRawFile(inputPath, outputPath) {
     }
 
     // Validate format
-    const supportedFormats = ['jpeg', 'png', 'tiff', 'jpeg2000', 'heif'];
+    const supportedFormats: OutputFormat[] = [
+      'jpeg',
+      'png',
+      'tiff',
+      'jpeg2000',
+      'heif',
+    ];
     if (!supportedFormats.includes(format)) {
       throw new Error(
         `Unsupported output format: ${ext}. Supported formats: jpg, jpeg, png, tif, tiff, jp2, jpeg2000, heif, heic`
@@ -42,7 +55,7 @@ async function convertRawFile(inputPath, outputPath) {
     console.log(`${format.toUpperCase()} saved to: ${outputPath}`);
     console.log(`File size: ${outputBuffer.length} bytes`);
   } catch (error) {
-    console.error('Error converting RAW:', error.message);
+    console.error('Error converting RAW:', (error as Error).message);
   }
 }
 
@@ -66,6 +79,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 
   const inputPath = args[0];
   const outputPath = args[1];
+
+  if (!inputPath || !outputPath) {
+    console.error('Both input and output paths are required');
+    process.exit(1);
+  }
 
   if (!fs.existsSync(inputPath)) {
     console.error(`Input file not found: ${inputPath}`);
