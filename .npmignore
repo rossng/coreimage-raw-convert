@@ -1,0 +1,21 @@
+# Exclude examples and data folders
+data/
+src/examples/
+examples/
+
+# Exclude build artifacts and temporary files
+*.tgz
+build/
+test-output/
+
+# Exclude development files
+.github/
+tsconfig.json
+*.log
+*.tmp
+
+# Exclude source TypeScript files (we ship compiled JS)
+src/*.ts
+!dist/
+
+# Keep only what's needed for the package
