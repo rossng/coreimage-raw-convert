@@ -34,7 +34,7 @@ jobs:
         run: npm ci
 
       - name: Build native addon
-        run: npm run build
+        run: npm run build:all
 
       - name: Check formatting
         run: npm run format:check
