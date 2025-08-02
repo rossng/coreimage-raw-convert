@@ -253,7 +253,6 @@ function runTests(): void {
   );
   console.log('✓ Correctly handles invalid options type\n');
 
-
   console.log('Test 8: Performance test...');
   const startTime = Date.now();
   const iterations = 3;

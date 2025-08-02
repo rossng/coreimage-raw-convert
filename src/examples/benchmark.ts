@@ -288,8 +288,14 @@ async function benchmark(): Promise<void> {
 
   // Print results table
   // Calculate dynamic column widths
-  const formatWidth = Math.max(12, Math.max(...results.map(r => r.format.length)) + 2);
-  const configWidth = Math.max(15, Math.max(...results.map(r => r.config.length)) + 2);
+  const formatWidth = Math.max(
+    12,
+    Math.max(...results.map((r) => r.format.length)) + 2
+  );
+  const configWidth = Math.max(
+    15,
+    Math.max(...results.map((r) => r.config.length)) + 2
+  );
   const timeWidth = 15;
   const sizeWidth = 15;
   const totalWidth = formatWidth + configWidth + timeWidth * 3 + sizeWidth;
