@@ -2,8 +2,8 @@ import assert from 'assert';
 import fs from 'fs';
 import path from 'path';
 import { convertRaw, convertRawToJpeg, type OutputFormat } from './index.js';
+import { loadSampleImage } from './examples/load-image.js';
 
-const TEST_RAW_FILE = 'examples/DSC00053.ARW';
 const TEST_OUTPUT_DIR = 'test-output';
 const TEST_OUTPUT_FILE = path.join(TEST_OUTPUT_DIR, 'test_output.jpg');
 
@@ -26,17 +26,13 @@ function runTests(): void {
     fs.mkdirSync(testOutputDir, { recursive: true });
   }
 
-  console.log('Test 1: Checking test file exists...');
-  assert(fs.existsSync(TEST_RAW_FILE), `Test file ${TEST_RAW_FILE} not found`);
-  console.log('✓ Test file exists\n');
-
-  console.log('Test 2: Reading RAW file...');
-  const rawBuffer = fs.readFileSync(TEST_RAW_FILE);
+  console.log('Test 1: Loading sample RAW file...');
+  const rawBuffer = loadSampleImage();
   assert(Buffer.isBuffer(rawBuffer), 'Failed to read file as buffer');
   assert(rawBuffer.length > 0, 'RAW buffer is empty');
-  console.log(`✓ RAW file read successfully (${rawBuffer.length} bytes)\n`);
+  console.log(`✓ RAW file loaded successfully (${rawBuffer.length} bytes)\n`);
 
-  console.log('Test 3: Converting RAW to JPEG...');
+  console.log('Test 2: Converting RAW to JPEG...');
   let jpegBuffer: Buffer;
   try {
     jpegBuffer = convertRawToJpeg(rawBuffer);
@@ -48,20 +44,20 @@ function runTests(): void {
   assert(jpegBuffer.length > 0, 'JPEG buffer is empty');
   console.log(`✓ Conversion successful (${jpegBuffer.length} bytes)\n`);
 
-  console.log('Test 4: Verifying JPEG format...');
+  console.log('Test 3: Verifying JPEG format...');
   assert(jpegBuffer[0] === 0xff, 'Invalid JPEG header byte 0');
   assert(jpegBuffer[1] === 0xd8, 'Invalid JPEG header byte 1');
   assert(jpegBuffer[2] === 0xff, 'Invalid JPEG header byte 2');
   console.log('✓ Valid JPEG header detected\n');
 
-  console.log('Test 5: Writing JPEG to file...');
+  console.log('Test 4: Writing JPEG to file...');
   fs.writeFileSync(TEST_OUTPUT_FILE, jpegBuffer);
   assert(fs.existsSync(TEST_OUTPUT_FILE), 'Failed to write output file');
   const writtenSize = fs.statSync(TEST_OUTPUT_FILE).size;
   assert(writtenSize === jpegBuffer.length, 'Written file size mismatch');
   console.log(`✓ JPEG written successfully to ${TEST_OUTPUT_FILE}\n`);
 
-  console.log('Test 6: Testing error handling...');
+  console.log('Test 5: Testing error handling...');
 
   assert.throws(
     () => {
@@ -90,7 +86,7 @@ function runTests(): void {
   );
   console.log('✓ Correctly handles invalid RAW data\n');
 
-  console.log('Test 7: Testing different output formats...');
+  console.log('Test 6: Testing different output formats...');
 
   // Test JPEG format
   const jpegBuffer2 = convertRaw(rawBuffer, 'jpeg');
@@ -164,7 +160,7 @@ function runTests(): void {
   );
   console.log('✓ Correctly handles non-string format\n');
 
-  console.log('Test 8: Testing various conversion options...');
+  console.log('Test 7: Testing various conversion options...');
 
   // Test with lens correction
   const jpegWithLensCorrection = convertRaw(rawBuffer, 'jpeg', {
@@ -253,13 +249,13 @@ function runTests(): void {
   );
   console.log('✓ Correctly handles invalid options type\n');
 
-  console.log('Test 9: Testing legacy convertRawToJpeg function...');
+  console.log('Test 8: Testing legacy convertRawToJpeg function...');
   const legacyJpeg = convertRawToJpeg(rawBuffer);
   assert(Buffer.isBuffer(legacyJpeg), 'Legacy function failed');
   assert(legacyJpeg.length > 0, 'Legacy function buffer is empty');
   console.log('✓ Legacy convertRawToJpeg function still works\n');
 
-  console.log('Test 10: Performance test...');
+  console.log('Test 9: Performance test...');
   const startTime = Date.now();
   const iterations = 3;
 
