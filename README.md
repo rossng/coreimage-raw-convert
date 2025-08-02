@@ -69,7 +69,7 @@ npm run load-image
 npm run benchmark
 
 # Benchmark with custom parameters
-npm run benchmark -- --lens-correction "true,false" --quality "0.1,0.5,0.9" --format "jpeg,tif"
+npm run benchmark -- --lens-correction "true,false" --quality "0.1,0.5,0.9" --format "jpeg,tif" --draft-mode "true,false" --boost "0.0,1.0" --iterations 10
 ```
 
 ### Example Usage from TypeScript/JavaScript

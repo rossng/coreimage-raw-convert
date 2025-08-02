@@ -1,12 +1,15 @@
 import { convertRaw, OutputFormat } from '../index.js';
 import { loadSampleImage } from './load-image.js';
 
-const ITERATIONS = 5;
+let ITERATIONS = 5;
 
 interface CliOptions {
   lensCorrection: boolean[];
   quality: number[];
   format: OutputFormat[];
+  draftMode: boolean[];
+  boost: number[];
+  iterations?: number;
 }
 
 interface TestConfig {
@@ -14,6 +17,7 @@ interface TestConfig {
   lensCorrection: boolean;
   allowDraftMode: boolean;
   quality?: number;
+  boost?: number;
 }
 
 interface BenchmarkResult {
@@ -37,6 +41,8 @@ function parseCliOptions(): CliOptions {
       OutputFormat.JPEG2000,
       OutputFormat.HEIF,
     ],
+    draftMode: [false],
+    boost: [1.0],
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -81,6 +87,26 @@ function parseCliOptions(): CliOptions {
           i++;
         }
         break;
+      case '--draft-mode':
+        if (value) {
+          options.draftMode = value
+            .split(',')
+            .map((v) => v.trim().toLowerCase() === 'true');
+          i++;
+        }
+        break;
+      case '--boost':
+        if (value) {
+          options.boost = value.split(',').map((v) => parseFloat(v.trim()));
+          i++;
+        }
+        break;
+      case '--iterations':
+        if (value) {
+          options.iterations = parseInt(value.trim(), 10);
+          i++;
+        }
+        break;
     }
   }
 
@@ -107,14 +133,20 @@ function generateTestConfigs(cliOptions: CliOptions): TestConfig[] {
 
   for (const lensCorrection of cliOptions.lensCorrection) {
     for (const quality of cliOptions.quality) {
-      const qualityStr = quality !== 0.8 ? ` Q${quality}` : '';
-      const lensStr = lensCorrection ? ' +Lens' : ' -Lens';
-      configs.push({
-        name: `Standard${qualityStr}${lensStr}`,
-        lensCorrection,
-        allowDraftMode: false,
-        quality,
-      });
+      for (const draftMode of cliOptions.draftMode) {
+        for (const boost of cliOptions.boost) {
+          const qualityStr = quality !== 0.8 ? ` Q${quality}` : '';
+          const lensStr = lensCorrection ? ' +Lens' : ' -Lens';
+          const boostStr = boost !== 1.0 ? ` B${boost}` : '';
+          configs.push({
+            name: `${draftMode ? 'Draft' : 'Standard'}${qualityStr}${boostStr}${lensStr}`,
+            lensCorrection,
+            allowDraftMode: draftMode,
+            quality,
+            boost,
+          });
+        }
+      }
     }
   }
 
@@ -124,6 +156,11 @@ function generateTestConfigs(cliOptions: CliOptions): TestConfig[] {
 async function benchmark(): Promise<void> {
   const cliOptions = parseCliOptions();
   const testConfigs = generateTestConfigs(cliOptions);
+
+  // Set iterations if specified
+  if (cliOptions.iterations) {
+    ITERATIONS = cliOptions.iterations;
+  }
 
   console.log('Loading RAW image...');
   const rawBuffer = loadSampleImage();
@@ -137,6 +174,9 @@ async function benchmark(): Promise<void> {
   );
   console.log(`  Lens correction: ${cliOptions.lensCorrection.join(', ')}`);
   console.log(`  Quality levels: ${cliOptions.quality.join(', ')}`);
+  console.log(`  Draft mode: ${cliOptions.draftMode.join(', ')}`);
+  console.log(`  Boost levels: ${cliOptions.boost.join(', ')}`);
+  console.log(`  Iterations per test: ${ITERATIONS}`);
   console.log();
 
   // JIT warmup runs
@@ -150,6 +190,10 @@ async function benchmark(): Promise<void> {
         lensCorrection: warmupConfig.lensCorrection,
         allowDraftMode: warmupConfig.allowDraftMode,
       };
+
+      if (warmupConfig.boost !== undefined) {
+        conversionOptions.boost = warmupConfig.boost;
+      }
 
       if (
         warmupConfig.quality &&
@@ -189,6 +233,10 @@ async function benchmark(): Promise<void> {
             lensCorrection: config.lensCorrection,
             allowDraftMode: config.allowDraftMode,
           };
+
+          if (config.boost !== undefined) {
+            conversionOptions.boost = config.boost;
+          }
 
           // Add quality option for formats that support it
           if (
@@ -239,34 +287,41 @@ async function benchmark(): Promise<void> {
   }
 
   // Print results table
-  console.log('\n' + '='.repeat(100));
+  // Calculate dynamic column widths
+  const formatWidth = Math.max(12, Math.max(...results.map(r => r.format.length)) + 2);
+  const configWidth = Math.max(15, Math.max(...results.map(r => r.config.length)) + 2);
+  const timeWidth = 15;
+  const sizeWidth = 15;
+  const totalWidth = formatWidth + configWidth + timeWidth * 3 + sizeWidth;
+
+  console.log('\n' + '='.repeat(totalWidth));
   console.log('BENCHMARK RESULTS');
-  console.log('='.repeat(100));
+  console.log('='.repeat(totalWidth));
 
   // Header
   console.log(
-    'Format'.padEnd(12) +
-      'Configuration'.padEnd(20) +
-      'Avg Time (ms)'.padEnd(15) +
-      'Min Time (ms)'.padEnd(15) +
-      'Max Time (ms)'.padEnd(15) +
+    'Format'.padEnd(formatWidth) +
+      'Configuration'.padEnd(configWidth) +
+      'Avg Time (ms)'.padEnd(timeWidth) +
+      'Min Time (ms)'.padEnd(timeWidth) +
+      'Max Time (ms)'.padEnd(timeWidth) +
       'Output Size'
   );
-  console.log('-'.repeat(100));
+  console.log('-'.repeat(totalWidth));
 
   // Data rows
   for (const result of results) {
     console.log(
-      result.format.padEnd(12) +
-        result.config.padEnd(20) +
-        result.avgTime.toFixed(2).padStart(13) +
-        result.minTime.toFixed(2).padStart(15) +
-        result.maxTime.toFixed(2).padStart(15) +
-        formatFileSize(result.outputSize).padStart(15)
+      result.format.padEnd(formatWidth) +
+        result.config.padEnd(configWidth) +
+        result.avgTime.toFixed(2).padStart(timeWidth - 2) +
+        result.minTime.toFixed(2).padStart(timeWidth) +
+        result.maxTime.toFixed(2).padStart(timeWidth) +
+        formatFileSize(result.outputSize).padStart(sizeWidth)
     );
   }
 
-  console.log('='.repeat(100));
+  console.log('='.repeat(totalWidth));
   console.log(`\nIterations per format: ${ITERATIONS}`);
 }
 
