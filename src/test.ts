@@ -2,7 +2,7 @@ import assert from 'assert';
 import fs from 'fs';
 import path from 'path';
 import { loadSampleImage } from './examples/load-image.js';
-import { convertRaw, convertRawToJpeg, OutputFormat } from './index.js';
+import { convertRaw, OutputFormat } from './index.js';
 
 const TEST_OUTPUT_DIR = 'test-output';
 const TEST_OUTPUT_FILE = path.join(TEST_OUTPUT_DIR, 'test_output.jpg');
@@ -35,7 +35,7 @@ function runTests(): void {
   console.log('Test 2: Converting RAW to JPEG...');
   let jpegBuffer: Buffer;
   try {
-    jpegBuffer = convertRawToJpeg(rawBuffer);
+    jpegBuffer = convertRaw(rawBuffer, OutputFormat.JPEG);
   } catch (error) {
     console.error('✗ Conversion failed:', (error as Error).message);
     throw error;
@@ -61,7 +61,7 @@ function runTests(): void {
 
   assert.throws(
     () => {
-      convertRawToJpeg('not a buffer' as any);
+      convertRaw('not a buffer' as any, OutputFormat.JPEG);
     },
     /Input must be a Buffer/,
     'Should throw error for non-buffer input'
@@ -70,7 +70,7 @@ function runTests(): void {
 
   assert.throws(
     () => {
-      convertRawToJpeg(Buffer.alloc(0));
+      convertRaw(Buffer.alloc(0), OutputFormat.JPEG);
     },
     /Input buffer is empty/,
     'Should throw error for empty buffer'
@@ -79,7 +79,7 @@ function runTests(): void {
 
   assert.throws(
     () => {
-      convertRawToJpeg(Buffer.from('invalid raw data'));
+      convertRaw(Buffer.from('invalid raw data'), OutputFormat.JPEG);
     },
     /Output image has empty extent/,
     'Should throw error for invalid RAW data'
@@ -253,13 +253,8 @@ function runTests(): void {
   );
   console.log('✓ Correctly handles invalid options type\n');
 
-  console.log('Test 8: Testing legacy convertRawToJpeg function...');
-  const legacyJpeg = convertRawToJpeg(rawBuffer);
-  assert(Buffer.isBuffer(legacyJpeg), 'Legacy function failed');
-  assert(legacyJpeg.length > 0, 'Legacy function buffer is empty');
-  console.log('✓ Legacy convertRawToJpeg function still works\n');
 
-  console.log('Test 9: Performance test...');
+  console.log('Test 8: Performance test...');
   const startTime = Date.now();
   const iterations = 3;
 

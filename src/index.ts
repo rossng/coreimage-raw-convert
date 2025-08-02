@@ -206,17 +206,3 @@ export function convertRaw<F extends OutputFormat>(
     mergedOptions
   );
 }
-
-/**
- * Convert a RAW image buffer to JPEG format
- * @deprecated Use `convertRaw` instead
- * @param rawImageBuffer - Buffer containing RAW image data
- * @param options - Conversion options (see `convertRaw` for options)
- * @returns Buffer containing JPEG image data
- */
-export function convertRawToJpeg(
-  rawImageBuffer: Buffer,
-  options: ConversionOptions = {}
-): Buffer {
-  return convertRaw(rawImageBuffer, OutputFormat.JPEG, options);
-}
