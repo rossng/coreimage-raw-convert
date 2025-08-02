@@ -1,3 +1,21 @@
+# [2.0.0](https://github.com/rossng/coreimage-raw-convert/compare/v1.2.0...v2.0.0) (2025-08-02)
+
+
+### chore
+
+* remove `convertRawToJpeg` ([59cae1e](https://github.com/rossng/coreimage-raw-convert/commit/59cae1e4d998b85349a84e59a1e2040847b54723))
+
+
+### Features
+
+* add format-specific quality options to `convertRaw` ([53f2a93](https://github.com/rossng/coreimage-raw-convert/commit/53f2a933744227c946f36cd8d9a832d42745a4e2))
+
+
+### BREAKING CHANGES
+
+* remove deprecated `convertRawToJpeg`
+* `convertRaw` format option now expects enum value rather than string
+
 # [1.2.0](https://github.com/rossng/coreimage-raw-convert/compare/v1.1.0...v1.2.0) (2025-08-02)
 
 
