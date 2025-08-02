@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { convertRawToJpeg } from '../index.js';
+import { convertRaw } from '../index.js';
 
 // Example usage
 async function convertRawFile(inputPath, outputPath) {
@@ -9,16 +9,40 @@ async function convertRawFile(inputPath, outputPath) {
     console.log(`Reading RAW file: ${inputPath}`);
     const rawBuffer = fs.readFileSync(inputPath);
 
-    // Convert to JPEG
-    console.log('Converting RAW to JPEG...');
-    const jpegBuffer = convertRawToJpeg(rawBuffer);
+    // Determine output format from file extension
+    const ext = path.extname(outputPath).toLowerCase().substring(1);
+    let format = ext;
 
-    // Write the JPEG file
-    fs.writeFileSync(outputPath, jpegBuffer);
-    console.log(`JPEG saved to: ${outputPath}`);
-    console.log(`File size: ${jpegBuffer.length} bytes`);
+    // Map common extensions to supported format names
+    const formatMap = {
+      jpg: 'jpeg',
+      tif: 'tiff',
+      jp2: 'jpeg2000',
+      heic: 'heif',
+    };
+
+    if (formatMap[ext]) {
+      format = formatMap[ext];
+    }
+
+    // Validate format
+    const supportedFormats = ['jpeg', 'png', 'tiff', 'jpeg2000', 'heif'];
+    if (!supportedFormats.includes(format)) {
+      throw new Error(
+        `Unsupported output format: ${ext}. Supported formats: jpg, jpeg, png, tif, tiff, jp2, jpeg2000, heif, heic`
+      );
+    }
+
+    // Convert to specified format
+    console.log(`Converting RAW to ${format.toUpperCase()}...`);
+    const outputBuffer = convertRaw(rawBuffer, format);
+
+    // Write the output file
+    fs.writeFileSync(outputPath, outputBuffer);
+    console.log(`${format.toUpperCase()} saved to: ${outputPath}`);
+    console.log(`File size: ${outputBuffer.length} bytes`);
   } catch (error) {
-    console.error('Error converting RAW to JPEG:', error.message);
+    console.error('Error converting RAW:', error.message);
   }
 }
 
@@ -27,10 +51,15 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const args = process.argv.slice(2);
 
   if (args.length < 2) {
-    console.log('Usage: node example.js <input.raw> <output.jpg>');
+    console.log(
+      'Usage: node example.js <input.raw> <output.{jpg|png|tif|jp2|heif}>'
+    );
     console.log('');
     console.log(
-      'Supported RAW formats include: NEF, CR2, ARW, DNG, RAF, ORF, etc.'
+      'Supported input RAW formats: NEF, CR2, ARW, DNG, RAF, ORF, etc.'
+    );
+    console.log(
+      'Supported output formats: jpg, jpeg, png, tif, tiff, jp2, jpeg2000, heif, heic'
     );
     process.exit(1);
   }

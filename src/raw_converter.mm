@@ -3,14 +3,24 @@
 #import <Foundation/Foundation.h>
 #import <ImageIO/ImageIO.h>
 #import <AppKit/AppKit.h>
+#include <string>
 
 using namespace v8;
 
-NAN_METHOD(ConvertRawToJpeg) {
+NAN_METHOD(ConvertRaw) {
     if (info.Length() < 1 || !node::Buffer::HasInstance(info[0])) {
         Nan::ThrowTypeError("First argument must be a Buffer containing RAW image data");
         return;
     }
+    
+    if (info.Length() < 2 || !info[1]->IsString()) {
+        Nan::ThrowTypeError("Second argument must be a string specifying the output format");
+        return;
+    }
+    
+    // Get the output format
+    Nan::Utf8String outputFormat(info[1]);
+    std::string format = std::string(*outputFormat);
     
     // Parse options if provided
     // Default values
@@ -34,8 +44,8 @@ NAN_METHOD(ConvertRawToJpeg) {
     double localToneMapAmount = -1.0; // -1 means use default
     double scaleFactor = 1.0; // Default to 1.0 (no scaling)
     
-    if (info.Length() >= 2 && info[1]->IsObject()) {
-        Local<Object> options = info[1].As<Object>();
+    if (info.Length() >= 3 && info[2]->IsObject()) {
+        Local<Object> options = info[2].As<Object>();
         
         // Helper lambda to extract boolean option
         auto getBoolOption = [&](const char* key, bool& target) {
@@ -216,11 +226,30 @@ NAN_METHOD(ConvertRawToJpeg) {
             return;
         }
         
-        // Create JPEG data
-        NSMutableData* jpegData = [NSMutableData data];
+        // Determine the UTI for the output format
+        CFStringRef outputUTI;
+        if (format == "jpeg" || format == "jpg") {
+            outputUTI = CFSTR("public.jpeg");
+        } else if (format == "png") {
+            outputUTI = CFSTR("public.png");
+        } else if (format == "tiff" || format == "tif") {
+            outputUTI = CFSTR("public.tiff");
+        } else if (format == "jpeg2000" || format == "jp2") {
+            outputUTI = CFSTR("public.jpeg-2000");
+        } else if (format == "heif" || format == "heic") {
+            outputUTI = CFSTR("public.heic");
+        } else {
+            CGColorSpaceRelease(colorSpace);
+            std::string errorMsg = "Unsupported output format: " + format + ". Supported formats: jpeg, jpg, png, tiff, tif, jpeg2000, jp2, heif, heic";
+            Nan::ThrowError(errorMsg.c_str());
+            return;
+        }
+        
+        // Create output data
+        NSMutableData* outputData = [NSMutableData data];
         CGImageDestinationRef destination = CGImageDestinationCreateWithData(
-            (__bridge CFMutableDataRef)jpegData,
-            CFSTR("public.jpeg"),
+            (__bridge CFMutableDataRef)outputData,
+            outputUTI,
             1,
             NULL
         );
@@ -232,10 +261,11 @@ NAN_METHOD(ConvertRawToJpeg) {
             return;
         }
         
-        // Set JPEG compression quality
-        NSDictionary* properties = @{
-            (__bridge NSString*)kCGImageDestinationLossyCompressionQuality: @0.9
-        };
+        // Set format-specific properties
+        NSMutableDictionary* properties = [NSMutableDictionary dictionary];
+        if (format == "jpeg" || format == "jpg" || format == "heif" || format == "heic") {
+            properties[(__bridge NSString*)kCGImageDestinationLossyCompressionQuality] = @0.9;
+        }
         
         CGImageDestinationAddImage(destination, cgImage, (__bridge CFDictionaryRef)properties);
         
@@ -252,16 +282,16 @@ NAN_METHOD(ConvertRawToJpeg) {
         CGImageRelease(cgImage);
         CGColorSpaceRelease(colorSpace);
         
-        // Return the JPEG data as a Node.js Buffer
+        // Return the output data as a Node.js Buffer
         info.GetReturnValue().Set(
-            Nan::CopyBuffer((const char*)[jpegData bytes], [jpegData length]).ToLocalChecked()
+            Nan::CopyBuffer((const char*)[outputData bytes], [outputData length]).ToLocalChecked()
         );
     }
 }
 
 NAN_MODULE_INIT(Init) {
-    Nan::Set(target, Nan::New("convertRawToJpeg").ToLocalChecked(),
-        Nan::GetFunction(Nan::New<FunctionTemplate>(ConvertRawToJpeg)).ToLocalChecked());
+    Nan::Set(target, Nan::New("convertRaw").ToLocalChecked(),
+        Nan::GetFunction(Nan::New<FunctionTemplate>(ConvertRaw)).ToLocalChecked());
 }
 
 NODE_MODULE(raw_converter, Init)

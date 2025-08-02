@@ -2,7 +2,7 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { convertRawToJpeg } from '../index.js';
+import { convertRaw } from '../index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -265,6 +265,17 @@ app.get('/', (_, res) => {
         <label for="scaleFactor">Scale Factor</label>
         <input type="number" id="scaleFactor" min="0.1" max="2" step="0.1" value="1">
       </div>
+      
+      <div class="control-group">
+        <label for="outputFormat">Output Format</label>
+        <select id="outputFormat" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+          <option value="jpeg" selected>JPEG</option>
+          <option value="png">PNG</option>
+          <option value="tiff">TIFF</option>
+          <option value="jpeg2000">JPEG 2000</option>
+          <option value="heif">HEIF/HEIC</option>
+        </select>
+      </div>
     </div>
     
     <div class="image-container">
@@ -308,6 +319,9 @@ app.get('/', (_, res) => {
       document.getElementById('neutralTemperature').value = '';
       document.getElementById('neutralTint').value = '';
       document.getElementById('scaleFactor').value = '1';
+      
+      // Reset format dropdown
+      document.getElementById('outputFormat').value = 'jpeg';
     }
     
     // Update slider values
@@ -336,7 +350,10 @@ app.get('/', (_, res) => {
       btn.disabled = true;
       showStatus('Converting...', 'info');
       
+      const format = document.getElementById('outputFormat').value;
+      
       const options = {
+        format: format,
         lensCorrection: document.getElementById('lensCorrection').checked,
         exposure: parseFloat(document.getElementById('exposure').value),
         boost: parseFloat(document.getElementById('boost').value),
@@ -393,7 +410,8 @@ app.get('/', (_, res) => {
         img.src = url;
         img.style.display = 'block';
         
-        showStatus('Conversion successful!', 'success');
+        const formatName = format.toUpperCase();
+        showStatus('Conversion to ' + formatName + ' successful!', 'success');
       } catch (error) {
         showStatus('Conversion failed: ' + error.message, 'error');
       } finally {
@@ -423,12 +441,25 @@ app.post('/convert', express.json(), (req, res) => {
 
   try {
     const rawBuffer = fs.readFileSync(exampleRawPath);
-    const options = req.body || {};
+    const { format = 'jpeg', ...options } = req.body || {};
 
-    const jpegBuffer = convertRawToJpeg(rawBuffer, options);
+    const outputBuffer = convertRaw(rawBuffer, format, options);
 
-    res.type('image/jpeg');
-    res.send(jpegBuffer);
+    // Set appropriate content type based on format
+    const contentTypes = {
+      jpeg: 'image/jpeg',
+      jpg: 'image/jpeg',
+      png: 'image/png',
+      tiff: 'image/tiff',
+      tif: 'image/tiff',
+      jpeg2000: 'image/jp2',
+      jp2: 'image/jp2',
+      heif: 'image/heif',
+      heic: 'image/heic',
+    };
+
+    res.type(contentTypes[format] || 'image/jpeg');
+    res.send(outputBuffer);
   } catch (error) {
     console.error('Conversion error:', error);
     res.status(500).json({ error: error.message });

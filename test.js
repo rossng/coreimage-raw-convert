@@ -1,10 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import assert from 'assert';
-import { convertRawToJpeg } from './index.js';
+import { convertRaw, convertRawToJpeg } from './index.js';
 
 const TEST_RAW_FILE = 'examples/DSC00053.ARW';
-const TEST_OUTPUT_FILE = 'test-output/test_output.jpg';
+const TEST_OUTPUT_DIR = 'test-output';
+const TEST_OUTPUT_FILE = path.join(TEST_OUTPUT_DIR, 'test_output.jpg');
 
 function cleanup() {
   const testOutputDir = 'test-output';
@@ -89,10 +90,84 @@ function runTests() {
   );
   console.log('✓ Correctly handles invalid RAW data\n');
 
-  console.log('Test 7: Testing various conversion options...');
+  console.log('Test 7: Testing different output formats...');
+
+  // Test JPEG format
+  const jpegBuffer2 = convertRaw(rawBuffer, 'jpeg');
+  assert(Buffer.isBuffer(jpegBuffer2), 'JPEG format conversion failed');
+  assert(jpegBuffer2.length > 0, 'JPEG format buffer is empty');
+  assert(
+    jpegBuffer2[0] === 0xff && jpegBuffer2[1] === 0xd8,
+    'Invalid JPEG header'
+  );
+  console.log('✓ JPEG format works');
+
+  // Test PNG format
+  const pngBuffer = convertRaw(rawBuffer, 'png');
+  assert(Buffer.isBuffer(pngBuffer), 'PNG format conversion failed');
+  assert(pngBuffer.length > 0, 'PNG format buffer is empty');
+  assert(
+    pngBuffer[0] === 0x89 &&
+      pngBuffer[1] === 0x50 &&
+      pngBuffer[2] === 0x4e &&
+      pngBuffer[3] === 0x47,
+    'Invalid PNG header'
+  );
+  fs.writeFileSync(path.join(TEST_OUTPUT_DIR, 'test_output.png'), pngBuffer);
+  console.log('✓ PNG format works');
+
+  // Test TIFF format
+  const tiffBuffer = convertRaw(rawBuffer, 'tiff');
+  assert(Buffer.isBuffer(tiffBuffer), 'TIFF format conversion failed');
+  assert(tiffBuffer.length > 0, 'TIFF format buffer is empty');
+  // TIFF can be little-endian (II) or big-endian (MM)
+  const tiffHeader = tiffBuffer.toString('ascii', 0, 2);
+  assert(tiffHeader === 'II' || tiffHeader === 'MM', 'Invalid TIFF header');
+  fs.writeFileSync(path.join(TEST_OUTPUT_DIR, 'test_output.tif'), tiffBuffer);
+  console.log('✓ TIFF format works');
+
+  // Test HEIF format
+  try {
+    const heifBuffer = convertRaw(rawBuffer, 'heif');
+    assert(Buffer.isBuffer(heifBuffer), 'HEIF format conversion failed');
+    assert(heifBuffer.length > 0, 'HEIF format buffer is empty');
+    fs.writeFileSync(
+      path.join(TEST_OUTPUT_DIR, 'test_output.heif'),
+      heifBuffer
+    );
+    console.log('✓ HEIF format works');
+  } catch (e) {
+    console.log(
+      '✓ HEIF format attempted (may not be supported on all systems)'
+    );
+  }
+
+  // Test format parameter validation
+  assert.throws(
+    () => convertRaw(rawBuffer, 'bmp'),
+    /Unsupported format/,
+    'Should throw error for unsupported format'
+  );
+  console.log('✓ Correctly rejects unsupported formats');
+
+  assert.throws(
+    () => convertRaw(rawBuffer, ''),
+    /Format must be a non-empty string/,
+    'Should throw error for empty format'
+  );
+  console.log('✓ Correctly handles empty format string');
+
+  assert.throws(
+    () => convertRaw(rawBuffer, 123),
+    /Format must be a non-empty string/,
+    'Should throw error for non-string format'
+  );
+  console.log('✓ Correctly handles non-string format\n');
+
+  console.log('Test 8: Testing various conversion options...');
 
   // Test with lens correction
-  const jpegWithLensCorrection = convertRawToJpeg(rawBuffer, {
+  const jpegWithLensCorrection = convertRaw(rawBuffer, 'jpeg', {
     lensCorrection: true,
   });
   assert(
@@ -106,7 +181,7 @@ function runTests() {
   console.log('✓ Lens correction enabled works');
 
   // Test with exposure adjustment
-  const jpegWithExposure = convertRawToJpeg(rawBuffer, { exposure: 1.0 });
+  const jpegWithExposure = convertRaw(rawBuffer, 'jpeg', { exposure: 1.0 });
   assert(
     Buffer.isBuffer(jpegWithExposure),
     'Exposure adjustment conversion failed'
@@ -115,13 +190,13 @@ function runTests() {
   console.log('✓ Exposure adjustment works');
 
   // Test with boost adjustment
-  const jpegWithBoost = convertRawToJpeg(rawBuffer, { boost: 0.5 });
+  const jpegWithBoost = convertRaw(rawBuffer, 'jpeg', { boost: 0.5 });
   assert(Buffer.isBuffer(jpegWithBoost), 'Boost adjustment conversion failed');
   assert(jpegWithBoost.length > 0, 'Boost adjustment buffer is empty');
   console.log('✓ Boost adjustment works');
 
   // Test with shadow boost
-  const jpegWithShadowBoost = convertRawToJpeg(rawBuffer, {
+  const jpegWithShadowBoost = convertRaw(rawBuffer, 'jpeg', {
     boostShadowAmount: 0.3,
   });
   assert(
@@ -132,7 +207,7 @@ function runTests() {
   console.log('✓ Shadow boost works');
 
   // Test with noise reduction
-  const jpegWithNoiseReduction = convertRawToJpeg(rawBuffer, {
+  const jpegWithNoiseReduction = convertRaw(rawBuffer, 'jpeg', {
     colorNoiseReductionAmount: 0.5,
     luminanceNoiseReductionAmount: 0.3,
   });
@@ -144,7 +219,7 @@ function runTests() {
   console.log('✓ Noise reduction works');
 
   // Test with temperature adjustment
-  const jpegWithTemp = convertRawToJpeg(rawBuffer, {
+  const jpegWithTemp = convertRaw(rawBuffer, 'jpeg', {
     neutralTemperature: 5500,
   });
   assert(
@@ -155,7 +230,7 @@ function runTests() {
   console.log('✓ Temperature adjustment works');
 
   // Test with multiple options
-  const jpegMultiOptions = convertRawToJpeg(rawBuffer, {
+  const jpegMultiOptions = convertRaw(rawBuffer, 'jpeg', {
     lensCorrection: false,
     exposure: -0.5,
     boost: 0.8,
@@ -171,19 +246,25 @@ function runTests() {
   // Test invalid options type
   assert.throws(
     () => {
-      convertRawToJpeg(rawBuffer, 'invalid options');
+      convertRaw(rawBuffer, 'jpeg', 'invalid options');
     },
     /Options must be an object/,
     'Should throw error for invalid options type'
   );
   console.log('✓ Correctly handles invalid options type\n');
 
-  console.log('Test 8: Performance test...');
+  console.log('Test 9: Testing legacy convertRawToJpeg function...');
+  const legacyJpeg = convertRawToJpeg(rawBuffer);
+  assert(Buffer.isBuffer(legacyJpeg), 'Legacy function failed');
+  assert(legacyJpeg.length > 0, 'Legacy function buffer is empty');
+  console.log('✓ Legacy convertRawToJpeg function still works\n');
+
+  console.log('Test 10: Performance test...');
   const startTime = Date.now();
   const iterations = 3;
 
   for (let i = 0; i < iterations; i++) {
-    convertRawToJpeg(rawBuffer);
+    convertRaw(rawBuffer, 'jpeg');
   }
 
   const totalTime = Date.now() - startTime;
@@ -193,8 +274,11 @@ function runTests() {
   console.log('===================================');
   console.log('All tests passed! ✓');
   console.log('===================================');
-  console.log(`\nOutput JPEG saved to: ${TEST_OUTPUT_FILE}`);
-  console.log('You can open it to verify the conversion quality.');
+  console.log(`\nOutput files saved to: ${TEST_OUTPUT_DIR}/`);
+  console.log('You can open them to verify the conversion quality.');
+  console.log(
+    'Created files: test_output.jpg, test_output.png, test_output.tif'
+  );
 }
 
 try {
