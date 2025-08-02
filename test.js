@@ -3,7 +3,7 @@ import path from 'path';
 import assert from 'assert';
 import { convertRawToJpeg } from './index.js';
 
-const TEST_RAW_FILE = 'DSC00053.ARW';
+const TEST_RAW_FILE = 'examples/DSC00053.ARW';
 const TEST_OUTPUT_FILE = 'test-output/test_output.jpg';
 
 function cleanup() {
@@ -90,57 +90,84 @@ function runTests() {
   console.log('✓ Correctly handles invalid RAW data\n');
 
   console.log('Test 7: Testing various conversion options...');
-  
+
   // Test with lens correction
-  const jpegWithLensCorrection = convertRawToJpeg(rawBuffer, { lensCorrection: true });
-  assert(Buffer.isBuffer(jpegWithLensCorrection), 'Lens correction enabled conversion failed');
-  assert(jpegWithLensCorrection.length > 0, 'Lens correction enabled buffer is empty');
+  const jpegWithLensCorrection = convertRawToJpeg(rawBuffer, {
+    lensCorrection: true,
+  });
+  assert(
+    Buffer.isBuffer(jpegWithLensCorrection),
+    'Lens correction enabled conversion failed'
+  );
+  assert(
+    jpegWithLensCorrection.length > 0,
+    'Lens correction enabled buffer is empty'
+  );
   console.log('✓ Lens correction enabled works');
-  
+
   // Test with exposure adjustment
   const jpegWithExposure = convertRawToJpeg(rawBuffer, { exposure: 1.0 });
-  assert(Buffer.isBuffer(jpegWithExposure), 'Exposure adjustment conversion failed');
+  assert(
+    Buffer.isBuffer(jpegWithExposure),
+    'Exposure adjustment conversion failed'
+  );
   assert(jpegWithExposure.length > 0, 'Exposure adjustment buffer is empty');
   console.log('✓ Exposure adjustment works');
-  
+
   // Test with boost adjustment
   const jpegWithBoost = convertRawToJpeg(rawBuffer, { boost: 0.5 });
   assert(Buffer.isBuffer(jpegWithBoost), 'Boost adjustment conversion failed');
   assert(jpegWithBoost.length > 0, 'Boost adjustment buffer is empty');
   console.log('✓ Boost adjustment works');
-  
+
   // Test with shadow boost
-  const jpegWithShadowBoost = convertRawToJpeg(rawBuffer, { boostShadowAmount: 0.3 });
-  assert(Buffer.isBuffer(jpegWithShadowBoost), 'Shadow boost conversion failed');
+  const jpegWithShadowBoost = convertRawToJpeg(rawBuffer, {
+    boostShadowAmount: 0.3,
+  });
+  assert(
+    Buffer.isBuffer(jpegWithShadowBoost),
+    'Shadow boost conversion failed'
+  );
   assert(jpegWithShadowBoost.length > 0, 'Shadow boost buffer is empty');
   console.log('✓ Shadow boost works');
-  
+
   // Test with noise reduction
-  const jpegWithNoiseReduction = convertRawToJpeg(rawBuffer, { 
+  const jpegWithNoiseReduction = convertRawToJpeg(rawBuffer, {
     colorNoiseReductionAmount: 0.5,
-    luminanceNoiseReductionAmount: 0.3 
+    luminanceNoiseReductionAmount: 0.3,
   });
-  assert(Buffer.isBuffer(jpegWithNoiseReduction), 'Noise reduction conversion failed');
+  assert(
+    Buffer.isBuffer(jpegWithNoiseReduction),
+    'Noise reduction conversion failed'
+  );
   assert(jpegWithNoiseReduction.length > 0, 'Noise reduction buffer is empty');
   console.log('✓ Noise reduction works');
-  
+
   // Test with temperature adjustment
-  const jpegWithTemp = convertRawToJpeg(rawBuffer, { neutralTemperature: 5500 });
-  assert(Buffer.isBuffer(jpegWithTemp), 'Temperature adjustment conversion failed');
+  const jpegWithTemp = convertRawToJpeg(rawBuffer, {
+    neutralTemperature: 5500,
+  });
+  assert(
+    Buffer.isBuffer(jpegWithTemp),
+    'Temperature adjustment conversion failed'
+  );
   assert(jpegWithTemp.length > 0, 'Temperature adjustment buffer is empty');
   console.log('✓ Temperature adjustment works');
-  
+
   // Test with multiple options
   const jpegMultiOptions = convertRawToJpeg(rawBuffer, {
     lensCorrection: false,
     exposure: -0.5,
     boost: 0.8,
-    allowDraftMode: true
+    allowDraftMode: true,
   });
-  assert(Buffer.isBuffer(jpegMultiOptions), 'Multiple options conversion failed');
+  assert(
+    Buffer.isBuffer(jpegMultiOptions),
+    'Multiple options conversion failed'
+  );
   assert(jpegMultiOptions.length > 0, 'Multiple options buffer is empty');
   console.log('✓ Multiple options work');
-  
+
   // Test invalid options type
   assert.throws(
     () => {

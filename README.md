@@ -31,7 +31,13 @@ fs.writeFileSync('photo.jpg', jpegBuffer);
 Convert a RAW file from command line:
 
 ```bash
-node example.js input.raw output.jpg
+node examples/example.js input.raw output.jpg
+```
+
+Try out the various conversion options:
+
+```bash
+node examples/demo.js
 ```
 
 ## API

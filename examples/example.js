@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { convertRawToJpeg } from './index.js';
+import { convertRawToJpeg } from '../index.js';
 
 // Example usage
 async function convertRawFile(inputPath, outputPath) {
