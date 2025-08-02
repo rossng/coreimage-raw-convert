@@ -33,7 +33,7 @@
     "native"
   ],
   "author": "",
-  "license": "MIT",
+  "license": "BlueOak-1.0.0",
   "dependencies": {
     "nan": "^2.23.0"
   },
