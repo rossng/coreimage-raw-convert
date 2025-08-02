@@ -45,25 +45,49 @@ const tiffBuffer = convertRaw(rawBuffer, 'tiff');
 fs.writeFileSync('photo.tif', tiffBuffer);
 ```
 
-## Example
+## Examples
+
+### Running Examples
+
+The project includes several TypeScript examples. Use the npm scripts to run them:
+
+```bash
+# Convert a RAW file from command line
+npm run example -- input.raw output.jpg
+
+# Convert to different formats
+npm run example -- input.raw output.png
+npm run example -- input.raw output.tif
+
+# Interactive web demo with all conversion options
+npm run demo
+
+# Load and display a sample image
+npm run load-image
+
+# Performance benchmark
+npm run benchmark
+```
+
+### Example Usage from TypeScript/JavaScript
 
 Convert a RAW file from command line:
 
 ```bash
 # Convert to JPEG (default)
-node examples/example.js input.raw output.jpg
+npm run example -- input.raw output.jpg
 
 # Convert to PNG
-node examples/example.js input.raw output.png
+npm run example -- input.raw output.png
 
 # Convert to TIFF
-node examples/example.js input.raw output.tif
+npm run example -- input.raw output.tif
 ```
 
-Try out the various conversion options:
+Try out the various conversion options with the interactive web demo:
 
 ```bash
-node examples/demo.js
+npm run demo
 ```
 
 ## API
