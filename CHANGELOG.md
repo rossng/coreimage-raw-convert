@@ -1,3 +1,10 @@
+## [2.0.2](https://github.com/rossng/coreimage-raw-convert/compare/v2.0.1...v2.0.2) (2025-08-04)
+
+
+### Bug Fixes
+
+* don't specify the C++ version explicitly ([a171eb0](https://github.com/rossng/coreimage-raw-convert/commit/a171eb0a82e93ef66489a46d3b5844a55aee0302))
+
 ## [2.0.1](https://github.com/rossng/coreimage-raw-convert/compare/v2.0.0...v2.0.1) (2025-08-02)
 
 
