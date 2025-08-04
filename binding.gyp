@@ -7,7 +7,6 @@
         "<!(node -e \"require('nan')\")"
       ],
       "xcode_settings": {
-        "OTHER_CPLUSPLUSFLAGS": ["-std=c++17", "-stdlib=libc++"],
         "OTHER_LDFLAGS": ["-framework CoreImage", "-framework Foundation", "-framework CoreGraphics", "-framework ImageIO", "-framework AppKit"],
         "MACOSX_DEPLOYMENT_TARGET": "10.11",
         "GCC_ENABLE_CPP_EXCEPTIONS": "YES"
