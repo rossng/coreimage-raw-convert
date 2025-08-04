@@ -136,6 +136,9 @@ export interface ConversionOptions {
 
   /** Scale factor for output image (default: 1.0) */
   scaleFactor?: number;
+
+  /** Preserve EXIF metadata from the original RAW file (default: true) */
+  preserveExifData?: boolean;
 }
 
 /**
@@ -145,6 +148,7 @@ interface InternalConversionOptions extends ConversionOptions {
   quality?: number;
   embedThumbnail?: boolean;
   optimizeColorForSharing?: boolean;
+  preserveExifData?: boolean;
 }
 
 /**

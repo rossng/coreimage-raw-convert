@@ -179,6 +179,13 @@ app.get('/', (_: Request, res: Response) => {
       </div>
       
       <div class="control-group">
+        <label>
+          <input type="checkbox" id="preserveExifData" checked>
+          <span class="checkbox-label">Preserve EXIF Metadata</span>
+        </label>
+      </div>
+      
+      <div class="control-group">
         <label for="exposure">Exposure (EV stops)</label>
         <div class="slider-container">
           <input type="range" id="exposure" min="-3" max="3" step="0.1" value="0">
@@ -324,6 +331,7 @@ app.get('/', (_: Request, res: Response) => {
       document.getElementById('ignoreImageOrientation').checked = false;
       document.getElementById('embedThumbnail').checked = false;
       document.getElementById('optimizeColorForSharing').checked = false;
+      document.getElementById('preserveExifData').checked = true;
       
       // Reset sliders and their displayed values
       const sliderDefaults = {
@@ -422,6 +430,7 @@ app.get('/', (_: Request, res: Response) => {
         disableGamutMap: document.getElementById('disableGamutMap').checked,
         allowDraftMode: document.getElementById('allowDraftMode').checked,
         ignoreImageOrientation: document.getElementById('ignoreImageOrientation').checked,
+        preserveExifData: document.getElementById('preserveExifData').checked,
         scaleFactor: parseFloat(document.getElementById('scaleFactor').value)
       };
       

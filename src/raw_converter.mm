@@ -48,6 +48,7 @@ NAN_METHOD(ConvertRaw) {
     double quality = -1.0; // -1 means use default (0.9 for lossy formats)
     bool embedThumbnail = false;
     bool optimizeColorForSharing = false;
+    bool preserveExifData = true; // Default to true to preserve metadata
     
     if (info.Length() >= 3 && info[2]->IsObject()) {
         Local<Object> options = info[2].As<Object>();
@@ -99,6 +100,7 @@ NAN_METHOD(ConvertRaw) {
         getNumberOption("quality", quality);
         getBoolOption("embedThumbnail", embedThumbnail);
         getBoolOption("optimizeColorForSharing", optimizeColorForSharing);
+        getBoolOption("preserveExifData", preserveExifData);
     }
     
     Local<Object> bufferObj = info[0].As<Object>();
@@ -123,6 +125,16 @@ NAN_METHOD(ConvertRaw) {
         
         // Create URL for the temp file
         NSURL* fileURL = [NSURL fileURLWithPath:tempPath];
+        
+        // Read metadata from source if preservation is requested
+        NSDictionary* sourceMetadata = nil;
+        if (preserveExifData) {
+            CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)fileURL, NULL);
+            if (imageSource) {
+                sourceMetadata = (__bridge NSDictionary*)CGImageSourceCopyPropertiesAtIndex(imageSource, 0, NULL);
+                CFRelease(imageSource);
+            }
+        }
         
         // Create RAW filter options
         NSMutableDictionary* rawOptions = [NSMutableDictionary dictionary];
@@ -290,7 +302,20 @@ NAN_METHOD(ConvertRaw) {
             properties[(__bridge NSString*)kCGImageDestinationOptimizeColorForSharing] = @YES;
         }
         
-        CGImageDestinationAddImage(destination, cgImage, (__bridge CFDictionaryRef)properties);
+        // Merge source metadata if preservation is requested
+        if (preserveExifData && sourceMetadata) {
+            NSMutableDictionary* mergedProperties = [NSMutableDictionary dictionaryWithDictionary:sourceMetadata];
+            
+            // Merge the format-specific properties
+            [mergedProperties addEntriesFromDictionary:properties];
+            
+            // Use the kCGImageDestinationMergeMetadata option to preserve metadata
+            mergedProperties[(__bridge NSString*)kCGImageDestinationMergeMetadata] = @YES;
+            
+            CGImageDestinationAddImage(destination, cgImage, (__bridge CFDictionaryRef)mergedProperties);
+        } else {
+            CGImageDestinationAddImage(destination, cgImage, (__bridge CFDictionaryRef)properties);
+        }
         
         if (!CGImageDestinationFinalize(destination)) {
             CFRelease(destination);
