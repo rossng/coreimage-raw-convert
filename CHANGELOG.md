@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/rossng/coreimage-raw-convert/compare/v2.0.2...v2.1.0) (2025-08-04)
+
+
+### Features
+
+* preserve EXIF data by default ([4f1a45b](https://github.com/rossng/coreimage-raw-convert/commit/4f1a45beb32730d50020ec6695c1f7c2c4a7370a))
+
 ## [2.0.2](https://github.com/rossng/coreimage-raw-convert/compare/v2.0.1...v2.0.2) (2025-08-04)
 
 
