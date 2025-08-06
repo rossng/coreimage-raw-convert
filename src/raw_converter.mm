@@ -237,8 +237,17 @@ private:
     char* outputData_;
     size_t outputLength_;
     
-    // Metadata for RGB format
-    Nan::Persistent<Object> metadata_;
+    // Metadata storage for background thread (plain C++ data)
+    struct MetadataStorage {
+        size_t width = 0;
+        size_t height = 0;
+        double focalLength35mm = -1;
+        double shutterSpeed = -1;
+        double fNumber = -1;
+        std::string cameraMake;
+        std::string cameraModel;
+        bool hasMetadata = false;
+    } metadataStorage_;
 };
 
 // Implementation of AsyncWorker methods
@@ -405,10 +414,52 @@ void ConvertRawAsyncWorker::Execute() {
             return;
         }
         
-        // Extract metadata if requested
+        // Extract metadata if requested (store as plain C++ data for thread safety)
         if (options_.extractMetadata) {
-            Local<Object> metadataObj = ExtractImageMetadata(sourceMetadataRef, cgImage);
-            metadata_.Reset(metadataObj);
+            metadataStorage_.hasMetadata = true;
+            
+            // Basic image dimensions
+            if (cgImage) {
+                metadataStorage_.width = CGImageGetWidth(cgImage);
+                metadataStorage_.height = CGImageGetHeight(cgImage);
+            }
+            
+            if (sourceMetadataRef) {
+                NSDictionary* sourceMetadata = (__bridge NSDictionary*)sourceMetadataRef;
+                
+                // Extract EXIF data
+                NSDictionary* exifDict = sourceMetadata[(NSString*)kCGImagePropertyExifDictionary];
+                if (exifDict) {
+                    NSNumber* focalLength35mm = exifDict[(NSString*)kCGImagePropertyExifFocalLenIn35mmFilm];
+                    if (focalLength35mm) {
+                        metadataStorage_.focalLength35mm = [focalLength35mm doubleValue];
+                    }
+                    
+                    NSNumber* exposureTime = exifDict[(NSString*)kCGImagePropertyExifExposureTime];
+                    if (exposureTime) {
+                        metadataStorage_.shutterSpeed = [exposureTime doubleValue];
+                    }
+                    
+                    NSNumber* fNumber = exifDict[(NSString*)kCGImagePropertyExifFNumber];
+                    if (fNumber) {
+                        metadataStorage_.fNumber = [fNumber doubleValue];
+                    }
+                }
+                
+                // Extract TIFF data
+                NSDictionary* tiffDict = sourceMetadata[(NSString*)kCGImagePropertyTIFFDictionary];
+                if (tiffDict) {
+                    NSString* make = tiffDict[(NSString*)kCGImagePropertyTIFFMake];
+                    if (make) {
+                        metadataStorage_.cameraMake = [make UTF8String];
+                    }
+                    
+                    NSString* model = tiffDict[(NSString*)kCGImagePropertyTIFFModel];
+                    if (model) {
+                        metadataStorage_.cameraModel = [model UTF8String];
+                    }
+                }
+            }
         }
         
         // Handle RGB format separately (raw bitmap data)
@@ -533,8 +584,32 @@ void ConvertRawAsyncWorker::HandleOKCallback() {
     Nan::Set(outputImage, Nan::New("buffer").ToLocalChecked(), Nan::CopyBuffer(outputData_, outputLength_).ToLocalChecked());
     
     // Add metadata if it was extracted
-    if (!metadata_.IsEmpty()) {
-        Nan::Set(outputImage, Nan::New("metadata").ToLocalChecked(), Nan::New(metadata_));
+    if (metadataStorage_.hasMetadata) {
+        Local<Object> metadata = Nan::New<Object>();
+        
+        if (metadataStorage_.width > 0) {
+            Nan::Set(metadata, Nan::New("width").ToLocalChecked(), Nan::New<Number>(metadataStorage_.width));
+        }
+        if (metadataStorage_.height > 0) {
+            Nan::Set(metadata, Nan::New("height").ToLocalChecked(), Nan::New<Number>(metadataStorage_.height));
+        }
+        if (metadataStorage_.focalLength35mm >= 0) {
+            Nan::Set(metadata, Nan::New("focalLength35mm").ToLocalChecked(), Nan::New<Number>(metadataStorage_.focalLength35mm));
+        }
+        if (metadataStorage_.shutterSpeed >= 0) {
+            Nan::Set(metadata, Nan::New("shutterSpeed").ToLocalChecked(), Nan::New<Number>(metadataStorage_.shutterSpeed));
+        }
+        if (metadataStorage_.fNumber >= 0) {
+            Nan::Set(metadata, Nan::New("fNumber").ToLocalChecked(), Nan::New<Number>(metadataStorage_.fNumber));
+        }
+        if (!metadataStorage_.cameraMake.empty()) {
+            Nan::Set(metadata, Nan::New("cameraMake").ToLocalChecked(), Nan::New<String>(metadataStorage_.cameraMake).ToLocalChecked());
+        }
+        if (!metadataStorage_.cameraModel.empty()) {
+            Nan::Set(metadata, Nan::New("cameraModel").ToLocalChecked(), Nan::New<String>(metadataStorage_.cameraModel).ToLocalChecked());
+        }
+        
+        Nan::Set(outputImage, Nan::New("metadata").ToLocalChecked(), metadata);
     }
     
     Local<Value> argv[] = {

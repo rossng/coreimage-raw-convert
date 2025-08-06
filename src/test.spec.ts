@@ -592,6 +592,53 @@ describe('CoreImage RAW Convert', () => {
       expect(rgbWithMetadata.metadata?.width).toBe(6000);
       expect(rgbWithMetadata.metadata?.height).toBe(4000);
     });
+
+    it('should handle RGB format with extractMetadata without crashing', async () => {
+      // This test specifically verifies the fix for the segfault issue
+      // that occurred when using RGB format with extractMetadata: true
+
+      const rgbResult = await convertRawAsync(rawBuffer, OutputFormat.RGB, {
+        extractMetadata: true,
+        lensCorrection: true,
+        boost: 0.0,
+      });
+
+      // Verify the output is valid
+      expect(rgbResult).toHaveProperty('buffer');
+      expect(rgbResult.buffer).toBeInstanceOf(Buffer);
+      expect(rgbResult.buffer.length).toBe(72000000); // 6000x4000x3
+
+      // Verify metadata was extracted correctly
+      expect(rgbResult).toHaveProperty('metadata');
+      expect(rgbResult.metadata).toBeDefined();
+      expect(rgbResult.metadata?.width).toBe(6000);
+      expect(rgbResult.metadata?.height).toBe(4000);
+
+      // Check for camera metadata
+      expect(rgbResult.metadata?.cameraMake).toBeDefined();
+      expect(rgbResult.metadata?.cameraModel).toBeDefined();
+      expect(rgbResult.metadata?.cameraMake).toBe('SONY');
+      expect(rgbResult.metadata?.cameraModel).toBe('ZV-E10');
+
+      // Check for EXIF metadata
+      expect(rgbResult.metadata?.focalLength35mm).toBeDefined();
+      expect(rgbResult.metadata?.fNumber).toBeDefined();
+      expect(rgbResult.metadata?.shutterSpeed).toBeDefined();
+
+      // Multiple conversions should not cause issues
+      const secondRgbResult = await convertRawAsync(
+        rawBuffer,
+        OutputFormat.RGB,
+        {
+          extractMetadata: true,
+        }
+      );
+
+      expect(secondRgbResult).toHaveProperty('buffer');
+      expect(secondRgbResult.buffer.length).toBe(72000000);
+      expect(secondRgbResult.metadata?.width).toBe(6000);
+      expect(secondRgbResult.metadata?.height).toBe(4000);
+    });
   });
 
   describe('Performance Tests', () => {
