@@ -32,6 +32,101 @@ struct InternalConversionOptions {
     bool preserveExifData = true;
 };
 
+// Helper function to extract RGB data from CGImage
+static bool ExtractRgbData(CGImageRef cgImage, CGColorSpaceRef colorSpace, char** outputData, size_t* outputLength) {
+    // Try to get raw data directly from the CGImage first
+    CGDataProviderRef dataProvider = CGImageGetDataProvider(cgImage);
+    if (dataProvider) {
+        CFDataRef rawData = CGDataProviderCopyData(dataProvider);
+        if (rawData) {
+            const UInt8* bytes = CFDataGetBytePtr(rawData);
+            size_t dataLength = CFDataGetLength(rawData);
+            
+            // Check if this is RGBA data (4 bytes per pixel)
+            size_t width = CGImageGetWidth(cgImage);
+            size_t height = CGImageGetHeight(cgImage);
+            size_t expectedRgbaSize = width * height * 4;
+            
+            if (dataLength == expectedRgbaSize) {
+                // Convert RGBA to RGB
+                size_t rgbSize = width * height * 3;
+                unsigned char* rgbData = (unsigned char*)malloc(rgbSize);
+                if (rgbData) {
+                    for (size_t i = 0, j = 0; i < dataLength; i += 4, j += 3) {
+                        rgbData[j] = bytes[i];     // R
+                        rgbData[j+1] = bytes[i+1]; // G  
+                        rgbData[j+2] = bytes[i+2]; // B
+                        // Skip alpha at i+3
+                    }
+                    
+                    *outputLength = rgbSize;
+                    *outputData = new char[*outputLength];
+                    memcpy(*outputData, rgbData, *outputLength);
+                    
+                    free(rgbData);
+                    CFRelease(rawData);
+                    return true;
+                }
+            }
+            
+            CFRelease(rawData);
+        }
+    }
+    
+    // Fallback to bitmap context approach if direct access fails
+    size_t width = CGImageGetWidth(cgImage);
+    size_t height = CGImageGetHeight(cgImage);
+    size_t bytesPerPixel = 4; // RGBA for bitmap context
+    size_t bytesPerRow = width * bytesPerPixel;
+    size_t totalBytes = height * bytesPerRow;
+    
+    unsigned char* rgbaData = (unsigned char*)malloc(totalBytes);
+    if (!rgbaData) {
+        return false;
+    }
+    
+    CGContextRef bitmapContext = CGBitmapContextCreate(
+        rgbaData,
+        width,
+        height,
+        8,
+        bytesPerRow,
+        colorSpace,
+        kCGImageAlphaNoneSkipLast | kCGBitmapByteOrder32Big
+    );
+    
+    if (!bitmapContext) {
+        free(rgbaData);
+        return false;
+    }
+    
+    CGContextDrawImage(bitmapContext, CGRectMake(0, 0, width, height), cgImage);
+    
+    // Convert RGBA to RGB
+    size_t rgbSize = width * height * 3;
+    unsigned char* rgbOnlyData = (unsigned char*)malloc(rgbSize);
+    if (!rgbOnlyData) {
+        CGContextRelease(bitmapContext);
+        free(rgbaData);
+        return false;
+    }
+    
+    for (size_t i = 0, j = 0; i < totalBytes; i += 4, j += 3) {
+        rgbOnlyData[j] = rgbaData[i];
+        rgbOnlyData[j+1] = rgbaData[i+1];
+        rgbOnlyData[j+2] = rgbaData[i+2];
+    }
+    
+    *outputLength = rgbSize;
+    *outputData = new char[*outputLength];
+    memcpy(*outputData, rgbOnlyData, *outputLength);
+    
+    free(rgbOnlyData);
+    CGContextRelease(bitmapContext);
+    free(rgbaData);
+    return true;
+}
+
 // AsyncWorker class for background RAW conversion
 class ConvertRawAsyncWorker : public Nan::AsyncWorker {
 public:
@@ -250,9 +345,29 @@ void ConvertRawAsyncWorker::Execute() {
             return;
         }
         
+        // Handle RGB format separately (raw bitmap data)
+        std::string format = format_;
+        if (format == "rgb") {
+            if (ExtractRgbData(cgImage, colorSpace, &outputData_, &outputLength_)) {
+                CGColorSpaceRelease(colorSpace);
+                CGImageRelease(cgImage);
+                if (sourceMetadataRef) {
+                    CFRelease(sourceMetadataRef);
+                }
+                return;
+            } else {
+                CGColorSpaceRelease(colorSpace);
+                CGImageRelease(cgImage);
+                if (sourceMetadataRef) {
+                    CFRelease(sourceMetadataRef);
+                }
+                SetErrorMessage("Failed to extract RGB data from image");
+                return;
+            }
+        }
+        
         // Determine the UTI for the output format
         CFStringRef outputUTI;
-        std::string format = format_;
         if (format == "jpeg" || format == "jpg") {
             outputUTI = CFSTR("public.jpeg");
         } else if (format == "png") {
@@ -266,7 +381,7 @@ void ConvertRawAsyncWorker::Execute() {
         } else {
             CGColorSpaceRelease(colorSpace);
             CGImageRelease(cgImage);
-            std::string errorMsg = "Unsupported output format: " + format + ". Supported formats: jpeg, jpg, png, tiff, tif, jpeg2000, jp2, heif, heic";
+            std::string errorMsg = "Unsupported output format: " + format + ". Supported formats: jpeg, jpg, png, tiff, tif, jpeg2000, jp2, heif, heic, rgb";
             SetErrorMessage(errorMsg.c_str());
             return;
         }
@@ -640,6 +755,35 @@ NAN_METHOD(ConvertRaw) {
             return;
         }
         
+        // Handle RGB format separately (raw bitmap data)
+        if (format == "rgb") {
+            char* rgbData = nullptr;
+            size_t rgbLength = 0;
+            
+            if (ExtractRgbData(cgImage, colorSpace, &rgbData, &rgbLength)) {
+                // Return the RGB data as a Node.js Buffer
+                Local<Object> rgbBuffer = Nan::CopyBuffer(rgbData, rgbLength).ToLocalChecked();
+                
+                delete[] rgbData;
+                CGColorSpaceRelease(colorSpace);
+                CGImageRelease(cgImage);
+                if (sourceMetadataRef) {
+                    CFRelease(sourceMetadataRef);
+                }
+                
+                info.GetReturnValue().Set(rgbBuffer);
+                return;
+            } else {
+                CGColorSpaceRelease(colorSpace);
+                CGImageRelease(cgImage);
+                if (sourceMetadataRef) {
+                    CFRelease(sourceMetadataRef);
+                }
+                Nan::ThrowError("Failed to extract RGB data from image");
+                return;
+            }
+        }
+        
         // Determine the UTI for the output format
         CFStringRef outputUTI;
         if (format == "jpeg" || format == "jpg") {
@@ -654,7 +798,7 @@ NAN_METHOD(ConvertRaw) {
             outputUTI = CFSTR("public.heic");
         } else {
             CGColorSpaceRelease(colorSpace);
-            std::string errorMsg = "Unsupported output format: " + format + ". Supported formats: jpeg, jpg, png, tiff, tif, jpeg2000, jp2, heif, heic";
+            std::string errorMsg = "Unsupported output format: " + format + ". Supported formats: jpeg, jpg, png, tiff, tif, jpeg2000, jp2, heif, heic, rgb";
             Nan::ThrowError(errorMsg.c_str());
             return;
         }

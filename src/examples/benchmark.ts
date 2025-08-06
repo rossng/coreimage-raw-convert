@@ -165,6 +165,7 @@ function getFormatDisplayName(format: OutputFormat): string {
     [OutputFormat.JP2]: 'JPEG 2000',
     [OutputFormat.HEIF]: 'HEIF',
     [OutputFormat.HEIC]: 'HEIF',
+    [OutputFormat.RGB]: 'RGB',
   };
   return displayNames[format];
 }

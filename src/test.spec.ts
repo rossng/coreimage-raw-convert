@@ -113,6 +113,32 @@ describe('CoreImage RAW Convert', () => {
         tiffBuffer
       );
 
+      // Test RGB format (raw bitmap data)
+      const rgbBuffer = convertRaw(rawBuffer, OutputFormat.RGB);
+      expect(rgbBuffer).toBeInstanceOf(Buffer);
+      expect(rgbBuffer.length).toBeGreaterThan(0);
+
+      // RGB buffer should be exactly 6000x4000x3 = 72,000,000 bytes
+      expect(rgbBuffer.length).toBe(72000000);
+      const totalPixels = rgbBuffer.length / 3;
+      expect(totalPixels).toBe(24000000); // 6000 * 4000
+
+      // Save RGB data to file
+      fs.writeFileSync(
+        path.join(TEST_OUTPUT_DIR, 'test_output.bin'),
+        rgbBuffer
+      );
+
+      // Verify we have reasonable RGB values (0-255)
+      for (let i = 0; i < Math.min(30, rgbBuffer.length); i++) {
+        expect(rgbBuffer[i]).toBeGreaterThanOrEqual(0);
+        expect(rgbBuffer[i]).toBeLessThanOrEqual(255);
+      }
+
+      // RGB should be significantly larger than compressed formats
+      expect(rgbBuffer.length).toBeGreaterThan(jpegBuffer.length);
+      expect(rgbBuffer.length).toBeGreaterThan(pngBuffer.length);
+
       // Test HEIF format (may not be supported on all systems)
       try {
         const heifBuffer = convertRaw(rawBuffer, OutputFormat.HEIF);
@@ -465,6 +491,37 @@ describe('CoreImage RAW Convert', () => {
       expect(syncResult).toBeInstanceOf(Buffer);
       expect(syncResult.length).toBeGreaterThan(0);
       expect(syncTickCounter).toBeLessThanOrEqual(maxAllowedSyncTicks);
+    });
+
+    it('should convert RAW to RGB format asynchronously', async () => {
+      const rgbBuffer = await convertRawAsync(rawBuffer, OutputFormat.RGB);
+
+      expect(rgbBuffer).toBeInstanceOf(Buffer);
+      expect(rgbBuffer.length).toBeGreaterThan(0);
+
+      // RGB buffer should be exactly 6000x4000x3 = 72,000,000 bytes
+      expect(rgbBuffer.length).toBe(72000000);
+      const totalPixels = rgbBuffer.length / 3;
+      expect(totalPixels).toBe(24000000); // 6000 * 4000
+
+      // Save async RGB data to file (different name to avoid conflicts)
+      fs.writeFileSync(
+        path.join(TEST_OUTPUT_DIR, 'async_test_output.bin'),
+        rgbBuffer
+      );
+
+      // Should produce consistent results with sync version
+      const syncRgbBuffer = convertRaw(rawBuffer, OutputFormat.RGB);
+      expect(rgbBuffer.length).toBe(syncRgbBuffer.length);
+
+      // Buffers should be identical (raw data should be deterministic)
+      expect(rgbBuffer.equals(syncRgbBuffer)).toBe(true);
+
+      // Verify RGB values are in valid range
+      for (let i = 0; i < Math.min(100, rgbBuffer.length); i++) {
+        expect(rgbBuffer[i]).toBeGreaterThanOrEqual(0);
+        expect(rgbBuffer[i]).toBeLessThanOrEqual(255);
+      }
     });
   });
 

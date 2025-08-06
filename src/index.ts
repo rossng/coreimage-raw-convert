@@ -15,6 +15,7 @@ export enum OutputFormat {
   JP2 = 'jp2',
   HEIF = 'heif',
   HEIC = 'heic',
+  RGB = 'rgb',
 }
 
 /**
@@ -68,6 +69,13 @@ export interface TiffQualityOptions {
 }
 
 /**
+ * Quality settings for RGB format (raw bitmap data)
+ */
+export interface RgbQualityOptions {
+  /** No options for raw RGB format */
+}
+
+/**
  * Mapping from format to format-specific quality options
  */
 export type FormatQualityOptions = {
@@ -80,6 +88,7 @@ export type FormatQualityOptions = {
   [OutputFormat.PNG]: PngQualityOptions;
   [OutputFormat.TIFF]: TiffQualityOptions;
   [OutputFormat.TIF]: TiffQualityOptions;
+  [OutputFormat.RGB]: RgbQualityOptions;
 };
 
 /**
