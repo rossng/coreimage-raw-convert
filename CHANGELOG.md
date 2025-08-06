@@ -1,3 +1,15 @@
+# [3.0.0](https://github.com/rossng/coreimage-raw-convert/compare/v2.3.0...v3.0.0) (2025-08-06)
+
+
+### Features
+
+* return an `OutputImage` instead of a `Buffer` from `convertRaw`/`convertRawAsync`, include optional metadata ([96b571a](https://github.com/rossng/coreimage-raw-convert/commit/96b571a052cf3dfcf66e22e7cef0a8ac9eda7095))
+
+
+### BREAKING CHANGES
+
+* return type of `convertRaw` and `convertRawAsync` changed
+
 # [2.3.0](https://github.com/rossng/coreimage-raw-convert/compare/v2.2.0...v2.3.0) (2025-08-06)
 
 
