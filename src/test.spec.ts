@@ -3,7 +3,7 @@ import path from 'path';
 import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { loadSampleImage } from './examples/load-image.js';
-import { convertRaw, convertRawAsync, OutputFormat, OutputImage } from './index.js';
+import { convertRaw, convertRawAsync, OutputFormat } from './index.js';
 
 const TEST_OUTPUT_DIR = 'test-output';
 
@@ -278,9 +278,9 @@ describe('CoreImage RAW Convert', () => {
       const pathResult = convertRaw(tempRawPath, OutputFormat.JPEG, options);
 
       // Results should be very close (within 100 bytes due to potential timing differences)
-      expect(Math.abs(bufferResult.buffer.length - pathResult.buffer.length)).toBeLessThan(
-        100
-      );
+      expect(
+        Math.abs(bufferResult.buffer.length - pathResult.buffer.length)
+      ).toBeLessThan(100);
     });
   });
 
@@ -409,9 +409,9 @@ describe('CoreImage RAW Convert', () => {
       );
 
       // Results should be very close (within 100 bytes due to potential timing differences)
-      expect(Math.abs(syncResult.buffer.length - asyncResult.buffer.length)).toBeLessThan(
-        100
-      );
+      expect(
+        Math.abs(syncResult.buffer.length - asyncResult.buffer.length)
+      ).toBeLessThan(100);
     });
 
     it('should handle large batches without issues', async () => {
@@ -550,9 +550,13 @@ describe('CoreImage RAW Convert', () => {
 
     it('should extract metadata when extractMetadata option is enabled', async () => {
       // Test JPEG with metadata
-      const jpegWithMetadata = await convertRawAsync(rawBuffer, OutputFormat.JPEG, {
-        extractMetadata: true,
-      });
+      const jpegWithMetadata = await convertRawAsync(
+        rawBuffer,
+        OutputFormat.JPEG,
+        {
+          extractMetadata: true,
+        }
+      );
 
       expect(jpegWithMetadata).toHaveProperty('buffer');
       expect(jpegWithMetadata).toHaveProperty('metadata');
@@ -566,14 +570,21 @@ describe('CoreImage RAW Convert', () => {
       expect(jpegWithMetadata.metadata?.shutterSpeed).toBe(0.008);
 
       // Test JPEG without metadata (default)
-      const jpegWithoutMetadata = await convertRawAsync(rawBuffer, OutputFormat.JPEG);
+      const jpegWithoutMetadata = await convertRawAsync(
+        rawBuffer,
+        OutputFormat.JPEG
+      );
       expect(jpegWithoutMetadata).toHaveProperty('buffer');
       expect(jpegWithoutMetadata.metadata).toBeUndefined();
 
       // Test RGB with metadata
-      const rgbWithMetadata = await convertRawAsync(rawBuffer, OutputFormat.RGB, {
-        extractMetadata: true,
-      });
+      const rgbWithMetadata = await convertRawAsync(
+        rawBuffer,
+        OutputFormat.RGB,
+        {
+          extractMetadata: true,
+        }
+      );
 
       expect(rgbWithMetadata).toHaveProperty('buffer');
       expect(rgbWithMetadata).toHaveProperty('metadata');

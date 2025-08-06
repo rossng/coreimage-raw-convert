@@ -1,7 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { convertRaw, convertRawAsync, OutputFormat, OutputImage } from '../index.js';
+import {
+  convertRaw,
+  convertRawAsync,
+  OutputFormat,
+  OutputImage,
+} from '../index.js';
 import { loadSampleImage } from './load-image.js';
 
 let ITERATIONS = 5;
