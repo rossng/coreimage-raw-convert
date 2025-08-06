@@ -15,7 +15,10 @@
     "rebuild": "node-gyp rebuild",
     "build:ts": "tsc",
     "build:all": "npm run rebuild && npm run build:ts",
-    "test": "npm run build:ts && node dist/test.js",
+    "test": "npm run build:ts && vitest run",
+    "test:watch": "npm run build:ts && vitest",
+    "test:ui": "npm run build:ts && vitest --ui",
+    "test:legacy": "npm run build:ts && node dist/test.js",
     "install": "node-gyp rebuild",
     "format": "prettier --write \"**/*.{js,ts,json,md}\"",
     "format:check": "prettier --check \"**/*.{js,ts,json,md}\"",
@@ -45,13 +48,15 @@
     "@semantic-release/github": "^11.0.3",
     "@types/express": "^5.0.3",
     "@types/node": "^24.1.0",
+    "@vitest/ui": "^3.2.4",
     "express": "^5.1.0",
     "node-gyp": "^11.3.0",
     "prettier": "^3.6.2",
     "prettier-plugin-organize-imports": "^4.2.0",
     "semantic-release": "^24.2.7",
     "sharp": "^0.34.3",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   },
   "gypfile": true
 }

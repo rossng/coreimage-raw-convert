@@ -1,0 +1,1 @@
+- Write concisely, with minimal emojis and without boasting.
