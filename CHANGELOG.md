@@ -1,3 +1,10 @@
+# [2.3.0](https://github.com/rossng/coreimage-raw-convert/compare/v2.2.0...v2.3.0) (2025-08-06)
+
+
+### Features
+
+* add support for raw RGB buffer output ([20c8b32](https://github.com/rossng/coreimage-raw-convert/commit/20c8b32970733430d1bd1feb50d61e8691d9e5de))
+
 # [2.2.0](https://github.com/rossng/coreimage-raw-convert/compare/v2.1.0...v2.2.0) (2025-08-06)
 
 
