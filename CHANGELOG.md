@@ -1,3 +1,10 @@
+## [3.0.1](https://github.com/rossng/coreimage-raw-convert/compare/v3.0.0...v3.0.1) (2025-08-06)
+
+
+### Bug Fixes
+
+* fix crash when `extractMetadata: true` and using `OutputFormat.RGB` ([9ccf9ee](https://github.com/rossng/coreimage-raw-convert/commit/9ccf9ee05a955e94031d3e028c6f1b747135825f))
+
 # [3.0.0](https://github.com/rossng/coreimage-raw-convert/compare/v2.3.0...v3.0.0) (2025-08-06)
 
 
