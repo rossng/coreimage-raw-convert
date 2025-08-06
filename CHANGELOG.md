@@ -1,3 +1,11 @@
+# [2.2.0](https://github.com/rossng/coreimage-raw-convert/compare/v2.1.0...v2.2.0) (2025-08-06)
+
+
+### Features
+
+* add `convertRawAsync` ([21e1413](https://github.com/rossng/coreimage-raw-convert/commit/21e1413c6554be6112dda4d2d283ce213cd93f6f))
+* add path support to `convertRaw` ([9835707](https://github.com/rossng/coreimage-raw-convert/commit/9835707842b968d3cf601ea1be6224400776d0f5))
+
 # [2.1.0](https://github.com/rossng/coreimage-raw-convert/compare/v2.0.2...v2.1.0) (2025-08-04)
 
 
