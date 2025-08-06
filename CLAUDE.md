@@ -1,0 +1,2 @@
+- Write concisely, with minimal emojis and without boasting.
+- Run the examples using npm scripts from package.json
