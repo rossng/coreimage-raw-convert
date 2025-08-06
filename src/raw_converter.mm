@@ -128,10 +128,12 @@ void ConvertRawAsyncWorker::Execute() {
         
         // Read metadata from source if preservation is requested
         NSDictionary* sourceMetadata = nil;
+        CFDictionaryRef sourceMetadataRef = NULL;
         if (options_.preserveExifData) {
             CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)fileURL, NULL);
             if (imageSource) {
-                sourceMetadata = (__bridge NSDictionary*)CGImageSourceCopyPropertiesAtIndex(imageSource, 0, NULL);
+                sourceMetadataRef = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, NULL);
+                sourceMetadata = (__bridge NSDictionary*)sourceMetadataRef;
                 CFRelease(imageSource);
             }
         }
@@ -336,6 +338,9 @@ void ConvertRawAsyncWorker::Execute() {
         CFRelease(destination);
         CGImageRelease(cgImage);
         CGColorSpaceRelease(colorSpace);
+        if (sourceMetadataRef) {
+            CFRelease(sourceMetadataRef);
+        }
     }
 }
 
@@ -513,10 +518,12 @@ NAN_METHOD(ConvertRaw) {
         
         // Read metadata from source if preservation is requested
         NSDictionary* sourceMetadata = nil;
+        CFDictionaryRef sourceMetadataRef = NULL;
         if (preserveExifData) {
             CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)fileURL, NULL);
             if (imageSource) {
-                sourceMetadata = (__bridge NSDictionary*)CGImageSourceCopyPropertiesAtIndex(imageSource, 0, NULL);
+                sourceMetadataRef = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, NULL);
+                sourceMetadata = (__bridge NSDictionary*)sourceMetadataRef;
                 CFRelease(imageSource);
             }
         }
@@ -714,6 +721,9 @@ NAN_METHOD(ConvertRaw) {
         CFRelease(destination);
         CGImageRelease(cgImage);
         CGColorSpaceRelease(colorSpace);
+        if (sourceMetadataRef) {
+            CFRelease(sourceMetadataRef);
+        }
         
         // Return the output data as a Node.js Buffer
         info.GetReturnValue().Set(
