@@ -1,4 +1,4 @@
-import { convertRaw, OutputFormat } from '../index.js';
+import { convertRaw, convertRawAsync, OutputFormat } from '../index.js';
 import { loadSampleImage } from './load-image.js';
 
 let ITERATIONS = 5;
@@ -10,6 +10,7 @@ interface CliOptions {
   draftMode: boolean[];
   boost: number[];
   iterations?: number;
+  mode: ('sync' | 'async')[];
 }
 
 interface TestConfig {
@@ -23,6 +24,7 @@ interface TestConfig {
 interface BenchmarkResult {
   format: string;
   config: string;
+  mode: 'sync' | 'async';
   avgTime: number;
   minTime: number;
   maxTime: number;
@@ -43,6 +45,7 @@ function parseCliOptions(): CliOptions {
     ],
     draftMode: [false],
     boost: [1.0],
+    mode: ['sync', 'async'],
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -104,6 +107,21 @@ function parseCliOptions(): CliOptions {
       case '--iterations':
         if (value) {
           options.iterations = parseInt(value.trim(), 10);
+          i++;
+        }
+        break;
+      case '--mode':
+        if (value) {
+          const modes = value.split(',').map((v) => v.trim().toLowerCase());
+          const validModes: ('sync' | 'async')[] = [];
+          for (const mode of modes) {
+            if (mode === 'sync' || mode === 'async') {
+              validModes.push(mode);
+            } else {
+              throw new Error(`Invalid mode: ${mode}. Use 'sync' or 'async'`);
+            }
+          }
+          options.mode = validModes;
           i++;
         }
         break;
@@ -176,6 +194,7 @@ async function benchmark(): Promise<void> {
   console.log(`  Quality levels: ${cliOptions.quality.join(', ')}`);
   console.log(`  Draft mode: ${cliOptions.draftMode.join(', ')}`);
   console.log(`  Boost levels: ${cliOptions.boost.join(', ')}`);
+  console.log(`  Mode: ${cliOptions.mode.join(', ')}`);
   console.log(`  Iterations per test: ${ITERATIONS}`);
   console.log();
 
@@ -216,72 +235,84 @@ async function benchmark(): Promise<void> {
 
   const results: BenchmarkResult[] = [];
 
-  for (const format of cliOptions.format) {
-    const formatName = getFormatDisplayName(format);
+  for (const mode of cliOptions.mode) {
+    for (const format of cliOptions.format) {
+      const formatName = getFormatDisplayName(format);
 
-    for (const config of testConfigs) {
-      console.log(`Benchmarking ${formatName} - ${config.name}...`);
+      for (const config of testConfigs) {
+        console.log(`Benchmarking ${formatName} - ${config.name} (${mode})...`);
 
-      const times: number[] = [];
-      let outputSize = 0;
+        const times: number[] = [];
+        let outputSize = 0;
 
-      for (let i = 0; i < ITERATIONS; i++) {
-        const start = process.hrtime.bigint();
+        for (let i = 0; i < ITERATIONS; i++) {
+          const start = process.hrtime.bigint();
 
-        try {
-          const conversionOptions: any = {
-            lensCorrection: config.lensCorrection,
-            allowDraftMode: config.allowDraftMode,
-          };
+          try {
+            const conversionOptions: any = {
+              lensCorrection: config.lensCorrection,
+              allowDraftMode: config.allowDraftMode,
+            };
 
-          if (config.boost !== undefined) {
-            conversionOptions.boost = config.boost;
+            if (config.boost !== undefined) {
+              conversionOptions.boost = config.boost;
+            }
+
+            // Add quality option for formats that support it
+            if (
+              config.quality &&
+              (format === OutputFormat.JPEG ||
+                format === OutputFormat.JPG ||
+                format === OutputFormat.HEIF ||
+                format === OutputFormat.HEIC ||
+                format === OutputFormat.JPEG2000 ||
+                format === OutputFormat.JP2)
+            ) {
+              conversionOptions.quality = config.quality;
+            }
+
+            let result: Buffer;
+            if (mode === 'async') {
+              result = await convertRawAsync(
+                rawBuffer,
+                format,
+                conversionOptions
+              );
+            } else {
+              result = convertRaw(rawBuffer, format, conversionOptions);
+            }
+
+            const end = process.hrtime.bigint();
+            const duration = Number(end - start) / 1_000_000; // Convert to milliseconds
+            times.push(duration);
+
+            // Record the output size from the last iteration
+            if (i === ITERATIONS - 1) {
+              outputSize = result.length;
+            }
+          } catch (error) {
+            console.error(
+              `  Error converting to ${formatName}: ${(error as Error).message}`
+            );
+            break;
           }
-
-          // Add quality option for formats that support it
-          if (
-            config.quality &&
-            (format === OutputFormat.JPEG ||
-              format === OutputFormat.JPG ||
-              format === OutputFormat.HEIF ||
-              format === OutputFormat.HEIC ||
-              format === OutputFormat.JPEG2000 ||
-              format === OutputFormat.JP2)
-          ) {
-            conversionOptions.quality = config.quality;
-          }
-
-          const result = convertRaw(rawBuffer, format, conversionOptions);
-
-          const end = process.hrtime.bigint();
-          const duration = Number(end - start) / 1_000_000; // Convert to milliseconds
-          times.push(duration);
-
-          // Record the output size from the last iteration
-          if (i === ITERATIONS - 1) {
-            outputSize = result.length;
-          }
-        } catch (error) {
-          console.error(
-            `  Error converting to ${formatName}: ${(error as Error).message}`
-          );
-          break;
         }
-      }
 
-      if (times.length === ITERATIONS) {
-        const avgTime = times.reduce((a, b) => a + b, 0) / times.length;
-        const minTime = Math.min(...times);
-        const maxTime = Math.max(...times);
+        if (times.length === ITERATIONS) {
+          const avgTime = times.reduce((a, b) => a + b, 0) / times.length;
+          const minTime = Math.min(...times);
+          const maxTime = Math.max(...times);
 
-        results.push({
-          format: formatName,
-          config: config.name,
-          avgTime,
-          minTime,
-          maxTime,
-          outputSize,
-        });
+          results.push({
+            format: formatName,
+            config: config.name,
+            mode,
+            avgTime,
+            minTime,
+            maxTime,
+            outputSize,
+          });
+        }
       }
     }
   }
@@ -296,9 +327,11 @@ async function benchmark(): Promise<void> {
     15,
     Math.max(...results.map((r) => r.config.length)) + 2
   );
+  const modeWidth = 8;
   const timeWidth = 15;
   const sizeWidth = 15;
-  const totalWidth = formatWidth + configWidth + timeWidth * 3 + sizeWidth;
+  const totalWidth =
+    formatWidth + configWidth + modeWidth + timeWidth * 3 + sizeWidth;
 
   console.log('\n' + '='.repeat(totalWidth));
   console.log('BENCHMARK RESULTS');
@@ -308,6 +341,7 @@ async function benchmark(): Promise<void> {
   console.log(
     'Format'.padEnd(formatWidth) +
       'Configuration'.padEnd(configWidth) +
+      'Mode'.padEnd(modeWidth) +
       'Avg Time (ms)'.padEnd(timeWidth) +
       'Min Time (ms)'.padEnd(timeWidth) +
       'Max Time (ms)'.padEnd(timeWidth) +
@@ -320,6 +354,7 @@ async function benchmark(): Promise<void> {
     console.log(
       result.format.padEnd(formatWidth) +
         result.config.padEnd(configWidth) +
+        result.mode.padEnd(modeWidth) +
         result.avgTime.toFixed(2).padStart(timeWidth - 2) +
         result.minTime.toFixed(2).padStart(timeWidth) +
         result.maxTime.toFixed(2).padStart(timeWidth) +
@@ -327,7 +362,6 @@ async function benchmark(): Promise<void> {
     );
   }
 
-  console.log('='.repeat(totalWidth));
   console.log(`\nIterations per format: ${ITERATIONS}`);
 }
 
