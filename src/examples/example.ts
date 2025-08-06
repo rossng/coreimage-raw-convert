@@ -48,12 +48,12 @@ async function convertRawFile(
 
     // Convert to specified format
     console.log(`Converting RAW to ${format.toUpperCase()}...`);
-    const outputBuffer = convertRaw(rawBuffer, format);
+    const outputImage = convertRaw(rawBuffer, format);
 
     // Write the output file
-    fs.writeFileSync(outputPath, outputBuffer);
+    fs.writeFileSync(outputPath, outputImage.buffer);
     console.log(`${format.toUpperCase()} saved to: ${outputPath}`);
-    console.log(`File size: ${outputBuffer.length} bytes`);
+    console.log(`File size: ${outputImage.buffer.length} bytes`);
   } catch (error) {
     console.error('Error converting RAW:', (error as Error).message);
   }

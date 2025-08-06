@@ -31,7 +31,7 @@ async function demonstrateAsyncUsage() {
     });
     const time1 = Date.now() - start1;
     console.log(
-      `   ✓ Converted in ${time1}ms, output: ${result1.length} bytes\n`
+      `   ✓ Converted in ${time1}ms, output: ${result1.buffer.length} bytes\n`
     );
 
     // Example 2: Async usage with Buffer
@@ -44,7 +44,7 @@ async function demonstrateAsyncUsage() {
     });
     const time2 = Date.now() - start2;
     console.log(
-      `   ✓ Converted in ${time2}ms, output: ${result2.length} bytes\n`
+      `   ✓ Converted in ${time2}ms, output: ${result2.buffer.length} bytes\n`
     );
 
     // Example 3: Multiple concurrent conversions
@@ -59,7 +59,7 @@ async function demonstrateAsyncUsage() {
       });
       const time = Date.now() - start;
       console.log(
-        `   ✓ ${format.toUpperCase()}: ${result.length} bytes in ${time}ms`
+        `   ✓ ${format.toUpperCase()}: ${result.buffer.length} bytes in ${time}ms`
       );
       return { format, result, time };
     });

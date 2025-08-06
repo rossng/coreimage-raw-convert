@@ -525,7 +525,7 @@ app.post(
       const rawBuffer = loadSampleImage();
       const { format = 'jpeg', ...options } = req.body || {};
 
-      const outputBuffer = convertRaw(
+      const outputImage = convertRaw(
         rawBuffer,
         format as OutputFormat,
         options
@@ -545,7 +545,7 @@ app.post(
       };
 
       res.type(contentTypes[format] || 'image/jpeg');
-      res.send(outputBuffer);
+      res.send(outputImage.buffer);
     } catch (error) {
       console.error('Conversion error:', error);
       res.status(500).json({ error: (error as Error).message });

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { convertRaw, convertRawAsync, OutputFormat } from '../index.js';
+import { convertRaw, convertRawAsync, OutputFormat, OutputImage } from '../index.js';
 import { loadSampleImage } from './load-image.js';
 
 let ITERATIONS = 5;
@@ -319,7 +319,7 @@ async function benchmark(): Promise<void> {
               // Use path or buffer based on input type
               const input = inputType === 'path' ? rawPath : rawBuffer;
 
-              let result: Buffer;
+              let result: OutputImage;
               if (mode === 'async') {
                 result = await convertRawAsync(
                   input,
@@ -336,7 +336,7 @@ async function benchmark(): Promise<void> {
 
               // Record the output size from the last iteration
               if (i === ITERATIONS - 1) {
-                outputSize = result.length;
+                outputSize = result.buffer.length;
               }
             } catch (error) {
               console.error(

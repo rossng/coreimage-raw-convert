@@ -76,6 +76,36 @@ export interface RgbQualityOptions {
 }
 
 /**
+ * Image metadata extracted from RAW files using Core Image
+ */
+export interface ImageMetadata {
+  /** Image width in pixels */
+  width?: number;
+  /** Image height in pixels */
+  height?: number;
+  /** 35mm equivalent focal length in mm */
+  focalLength35mm?: number;
+  /** Shutter speed in seconds (e.g., 0.008 for 1/125s) */
+  shutterSpeed?: number;
+  /** F-number (aperture) */
+  fNumber?: number;
+  /** Camera make */
+  cameraMake?: string;
+  /** Camera model */
+  cameraModel?: string;
+}
+
+/**
+ * Output image with buffer and optional metadata
+ */
+export interface OutputImage {
+  /** Image buffer containing the converted data */
+  buffer: Buffer;
+  /** Image metadata (only populated if extractMetadata option is enabled) */
+  metadata?: ImageMetadata;
+}
+
+/**
  * Mapping from format to format-specific quality options
  */
 export type FormatQualityOptions = {
@@ -148,6 +178,9 @@ export interface ConversionOptions {
 
   /** Preserve EXIF metadata from the original RAW file (default: true) */
   preserveExifData?: boolean;
+
+  /** Extract and include image metadata in the output (default: false) */
+  extractMetadata?: boolean;
 }
 
 /**
@@ -158,6 +191,7 @@ interface InternalConversionOptions extends ConversionOptions {
   embedThumbnail?: boolean;
   optimizeColorForSharing?: boolean;
   preserveExifData?: boolean;
+  extractMetadata?: boolean;
 }
 
 /**
@@ -168,12 +202,12 @@ interface RawConverterAddon {
     input: Buffer | string,
     format: string,
     options: InternalConversionOptions
-  ): Buffer;
+  ): OutputImage;
   convertRawAsync(
     input: Buffer | string,
     format: string,
     options: InternalConversionOptions,
-    callback: (error: Error | null, result?: Buffer) => void
+    callback: (error: Error | null, result?: OutputImage) => void
   ): void;
 }
 
@@ -184,13 +218,13 @@ interface RawConverterAddon {
  * @param options - Format-specific conversion options
  * @throws {TypeError} If input is not a Buffer or string
  * @throws {Error} If the buffer is empty, file doesn't exist, or format is unsupported
- * @returns Buffer containing image data in the specified format
+ * @returns OutputImage containing buffer and optional metadata
  */
 export function convertRaw<F extends OutputFormat>(
   input: Buffer | string,
   format: F,
   options?: ConversionOptions & FormatQualityOptions[F]
-): Buffer {
+): OutputImage {
   if (!Buffer.isBuffer(input) && typeof input !== 'string') {
     throw new TypeError('Input must be a Buffer or file path string');
   }
@@ -207,7 +241,7 @@ export function convertRaw<F extends OutputFormat>(
     throw new TypeError('Format must be a non-empty string');
   }
 
-  const normalizedFormat = format.toLowerCase().trim() as OutputFormat;
+  const normalizedFormat = format.toLowerCase().trim() as F;
   const supportedFormats = Object.values(OutputFormat);
 
   if (!supportedFormats.includes(normalizedFormat)) {
@@ -237,13 +271,13 @@ export function convertRaw<F extends OutputFormat>(
  * @param options - Format-specific conversion options
  * @throws {TypeError} If input is not a Buffer or string
  * @throws {Error} If the buffer is empty, file doesn't exist, or format is unsupported
- * @returns Promise<Buffer> containing image data in the specified format
+ * @returns Promise<OutputImage> containing buffer and optional metadata
  */
 export function convertRawAsync<F extends OutputFormat>(
   input: Buffer | string,
   format: F,
   options?: ConversionOptions & FormatQualityOptions[F]
-): Promise<Buffer> {
+): Promise<OutputImage> {
   return new Promise((resolve, reject) => {
     // Input validation
     if (!Buffer.isBuffer(input) && typeof input !== 'string') {
@@ -266,7 +300,7 @@ export function convertRawAsync<F extends OutputFormat>(
       return;
     }
 
-    const normalizedFormat = format.toLowerCase().trim() as OutputFormat;
+    const normalizedFormat = format.toLowerCase().trim() as F;
     const supportedFormats = Object.values(OutputFormat);
 
     if (!supportedFormats.includes(normalizedFormat)) {
@@ -291,10 +325,11 @@ export function convertRawAsync<F extends OutputFormat>(
       input,
       normalizedFormat,
       mergedOptions,
-      (error: Error | null, result?: Buffer) => {
+      (error: Error | null, result?: OutputImage) => {
         if (error) {
           reject(error);
         } else if (result) {
+          // The native extension now returns OutputImage object for all formats
           resolve(result);
         } else {
           reject(new Error('Unknown error occurred during conversion'));

@@ -3,7 +3,7 @@ import path from 'path';
 import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { loadSampleImage } from './examples/load-image.js';
-import { convertRaw, convertRawAsync, OutputFormat } from './index.js';
+import { convertRaw, convertRawAsync, OutputFormat, OutputImage } from './index.js';
 
 const TEST_OUTPUT_DIR = 'test-output';
 
@@ -47,21 +47,22 @@ describe('CoreImage RAW Convert', () => {
     });
 
     it('should convert RAW to JPEG', () => {
-      const jpegBuffer = convertRaw(rawBuffer, OutputFormat.JPEG);
+      const jpegImage = convertRaw(rawBuffer, OutputFormat.JPEG);
 
-      expect(jpegBuffer).toBeInstanceOf(Buffer);
-      expect(jpegBuffer.length).toBeGreaterThan(0);
+      expect(jpegImage).toHaveProperty('buffer');
+      expect(jpegImage.buffer).toBeInstanceOf(Buffer);
+      expect(jpegImage.buffer.length).toBeGreaterThan(0);
 
       // Verify JPEG header
-      expect(jpegBuffer[0]).toBe(0xff);
-      expect(jpegBuffer[1]).toBe(0xd8);
-      expect(jpegBuffer[2]).toBe(0xff);
+      expect(jpegImage.buffer[0]).toBe(0xff);
+      expect(jpegImage.buffer[1]).toBe(0xd8);
+      expect(jpegImage.buffer[2]).toBe(0xff);
 
       // Save and verify file
       const outputPath = path.join(TEST_OUTPUT_DIR, 'test_output.jpg');
-      fs.writeFileSync(outputPath, jpegBuffer);
+      fs.writeFileSync(outputPath, jpegImage.buffer);
       expect(fs.existsSync(outputPath)).toBe(true);
-      expect(fs.statSync(outputPath).size).toBe(jpegBuffer.length);
+      expect(fs.statSync(outputPath).size).toBe(jpegImage.buffer.length);
     });
 
     it('should handle error cases correctly', () => {
@@ -83,70 +84,78 @@ describe('CoreImage RAW Convert', () => {
 
     it('should support different output formats', () => {
       // Test JPEG format
-      const jpegBuffer = convertRaw(rawBuffer, OutputFormat.JPEG);
-      expect(jpegBuffer).toBeInstanceOf(Buffer);
-      expect(jpegBuffer.length).toBeGreaterThan(0);
-      expect(jpegBuffer[0]).toBe(0xff);
-      expect(jpegBuffer[1]).toBe(0xd8);
+      const jpegImage = convertRaw(rawBuffer, OutputFormat.JPEG);
+      expect(jpegImage).toHaveProperty('buffer');
+      expect(jpegImage.buffer).toBeInstanceOf(Buffer);
+      expect(jpegImage.buffer.length).toBeGreaterThan(0);
+      expect(jpegImage.buffer[0]).toBe(0xff);
+      expect(jpegImage.buffer[1]).toBe(0xd8);
 
       // Test PNG format
-      const pngBuffer = convertRaw(rawBuffer, OutputFormat.PNG);
-      expect(pngBuffer).toBeInstanceOf(Buffer);
-      expect(pngBuffer.length).toBeGreaterThan(0);
-      expect(pngBuffer[0]).toBe(0x89);
-      expect(pngBuffer[1]).toBe(0x50);
-      expect(pngBuffer[2]).toBe(0x4e);
-      expect(pngBuffer[3]).toBe(0x47);
+      const pngImage = convertRaw(rawBuffer, OutputFormat.PNG);
+      expect(pngImage).toHaveProperty('buffer');
+      expect(pngImage.buffer).toBeInstanceOf(Buffer);
+      expect(pngImage.buffer.length).toBeGreaterThan(0);
+      expect(pngImage.buffer[0]).toBe(0x89);
+      expect(pngImage.buffer[1]).toBe(0x50);
+      expect(pngImage.buffer[2]).toBe(0x4e);
+      expect(pngImage.buffer[3]).toBe(0x47);
       fs.writeFileSync(
         path.join(TEST_OUTPUT_DIR, 'test_output.png'),
-        pngBuffer
+        pngImage.buffer
       );
 
       // Test TIFF format
-      const tiffBuffer = convertRaw(rawBuffer, OutputFormat.TIFF);
-      expect(tiffBuffer).toBeInstanceOf(Buffer);
-      expect(tiffBuffer.length).toBeGreaterThan(0);
-      const tiffHeader = tiffBuffer.toString('ascii', 0, 2);
+      const tiffImage = convertRaw(rawBuffer, OutputFormat.TIFF);
+      expect(tiffImage).toHaveProperty('buffer');
+      expect(tiffImage.buffer).toBeInstanceOf(Buffer);
+      expect(tiffImage.buffer.length).toBeGreaterThan(0);
+      const tiffHeader = tiffImage.buffer.toString('ascii', 0, 2);
       expect(['II', 'MM']).toContain(tiffHeader);
       fs.writeFileSync(
         path.join(TEST_OUTPUT_DIR, 'test_output.tif'),
-        tiffBuffer
+        tiffImage.buffer
       );
 
       // Test RGB format (raw bitmap data)
-      const rgbBuffer = convertRaw(rawBuffer, OutputFormat.RGB);
-      expect(rgbBuffer).toBeInstanceOf(Buffer);
-      expect(rgbBuffer.length).toBeGreaterThan(0);
+      const rgbImage = convertRaw(rawBuffer, OutputFormat.RGB);
+      expect(rgbImage).toHaveProperty('buffer');
+      expect(rgbImage.buffer).toBeInstanceOf(Buffer);
+      expect(rgbImage.buffer.length).toBeGreaterThan(0);
 
       // RGB buffer should be exactly 6000x4000x3 = 72,000,000 bytes
-      expect(rgbBuffer.length).toBe(72000000);
-      const totalPixels = rgbBuffer.length / 3;
+      expect(rgbImage.buffer.length).toBe(72000000);
+      const totalPixels = rgbImage.buffer.length / 3;
       expect(totalPixels).toBe(24000000); // 6000 * 4000
+
+      // Test metadata (RGB format has default extractMetadata: false, so no metadata expected)
+      expect(rgbImage.metadata).toBeUndefined();
 
       // Save RGB data to file
       fs.writeFileSync(
         path.join(TEST_OUTPUT_DIR, 'test_output.bin'),
-        rgbBuffer
+        rgbImage.buffer
       );
 
       // Verify we have reasonable RGB values (0-255)
-      for (let i = 0; i < Math.min(30, rgbBuffer.length); i++) {
-        expect(rgbBuffer[i]).toBeGreaterThanOrEqual(0);
-        expect(rgbBuffer[i]).toBeLessThanOrEqual(255);
+      for (let i = 0; i < Math.min(30, rgbImage.buffer.length); i++) {
+        expect(rgbImage.buffer[i]).toBeGreaterThanOrEqual(0);
+        expect(rgbImage.buffer[i]).toBeLessThanOrEqual(255);
       }
 
       // RGB should be significantly larger than compressed formats
-      expect(rgbBuffer.length).toBeGreaterThan(jpegBuffer.length);
-      expect(rgbBuffer.length).toBeGreaterThan(pngBuffer.length);
+      expect(rgbImage.buffer.length).toBeGreaterThan(jpegImage.buffer.length);
+      expect(rgbImage.buffer.length).toBeGreaterThan(pngImage.buffer.length);
 
       // Test HEIF format (may not be supported on all systems)
       try {
-        const heifBuffer = convertRaw(rawBuffer, OutputFormat.HEIF);
-        expect(heifBuffer).toBeInstanceOf(Buffer);
-        expect(heifBuffer.length).toBeGreaterThan(0);
+        const heifImage = convertRaw(rawBuffer, OutputFormat.HEIF);
+        expect(heifImage).toHaveProperty('buffer');
+        expect(heifImage.buffer).toBeInstanceOf(Buffer);
+        expect(heifImage.buffer.length).toBeGreaterThan(0);
         fs.writeFileSync(
           path.join(TEST_OUTPUT_DIR, 'test_output.heif'),
-          heifBuffer
+          heifImage.buffer
         );
       } catch (e) {
         // HEIF may not be supported on all systems, that's OK
@@ -170,15 +179,17 @@ describe('CoreImage RAW Convert', () => {
       const jpegWithLensCorrection = convertRaw(rawBuffer, OutputFormat.JPEG, {
         lensCorrection: true,
       });
-      expect(jpegWithLensCorrection).toBeInstanceOf(Buffer);
-      expect(jpegWithLensCorrection.length).toBeGreaterThan(0);
+      expect(jpegWithLensCorrection).toHaveProperty('buffer');
+      expect(jpegWithLensCorrection.buffer).toBeInstanceOf(Buffer);
+      expect(jpegWithLensCorrection.buffer.length).toBeGreaterThan(0);
 
       // Exposure adjustment
       const jpegWithExposure = convertRaw(rawBuffer, OutputFormat.JPEG, {
         exposure: 1.0,
       });
-      expect(jpegWithExposure).toBeInstanceOf(Buffer);
-      expect(jpegWithExposure.length).toBeGreaterThan(0);
+      expect(jpegWithExposure).toHaveProperty('buffer');
+      expect(jpegWithExposure.buffer).toBeInstanceOf(Buffer);
+      expect(jpegWithExposure.buffer.length).toBeGreaterThan(0);
 
       // Multiple options
       const jpegMultiOptions = convertRaw(rawBuffer, OutputFormat.JPEG, {
@@ -187,8 +198,9 @@ describe('CoreImage RAW Convert', () => {
         boost: 0.8,
         allowDraftMode: true,
       });
-      expect(jpegMultiOptions).toBeInstanceOf(Buffer);
-      expect(jpegMultiOptions.length).toBeGreaterThan(0);
+      expect(jpegMultiOptions).toHaveProperty('buffer');
+      expect(jpegMultiOptions.buffer).toBeInstanceOf(Buffer);
+      expect(jpegMultiOptions.buffer.length).toBeGreaterThan(0);
     });
 
     it('should handle invalid options', () => {
@@ -203,7 +215,7 @@ describe('CoreImage RAW Convert', () => {
         quality: 0.9,
       });
       const exifPath = path.join(TEST_OUTPUT_DIR, 'test_with_exif.jpg');
-      fs.writeFileSync(exifPath, jpegWithExif);
+      fs.writeFileSync(exifPath, jpegWithExif.buffer);
 
       const metadataWithExif = await sharp(exifPath).metadata();
       expect(metadataWithExif.exif).toBeDefined();
@@ -214,26 +226,27 @@ describe('CoreImage RAW Convert', () => {
         preserveExifData: false,
       });
       const noExifPath = path.join(TEST_OUTPUT_DIR, 'test_without_exif.jpg');
-      fs.writeFileSync(noExifPath, jpegWithoutExif);
+      fs.writeFileSync(noExifPath, jpegWithoutExif.buffer);
 
       const metadataWithoutExif = await sharp(noExifPath).metadata();
       expect(metadataWithoutExif.exif).toBeUndefined();
     });
 
     it('should convert RAW to JPEG using file path input', () => {
-      const jpegBuffer = convertRaw(tempRawPath, OutputFormat.JPEG, {
+      const jpegImage = convertRaw(tempRawPath, OutputFormat.JPEG, {
         quality: 0.9,
         lensCorrection: true,
       });
 
-      expect(jpegBuffer).toBeInstanceOf(Buffer);
-      expect(jpegBuffer.length).toBeGreaterThan(0);
-      expect(jpegBuffer[0]).toBe(0xff);
-      expect(jpegBuffer[1]).toBe(0xd8);
+      expect(jpegImage).toHaveProperty('buffer');
+      expect(jpegImage.buffer).toBeInstanceOf(Buffer);
+      expect(jpegImage.buffer.length).toBeGreaterThan(0);
+      expect(jpegImage.buffer[0]).toBe(0xff);
+      expect(jpegImage.buffer[1]).toBe(0xd8);
 
       fs.writeFileSync(
         path.join(TEST_OUTPUT_DIR, 'sync_path_test.jpg'),
-        jpegBuffer
+        jpegImage.buffer
       );
     });
 
@@ -265,7 +278,7 @@ describe('CoreImage RAW Convert', () => {
       const pathResult = convertRaw(tempRawPath, OutputFormat.JPEG, options);
 
       // Results should be very close (within 100 bytes due to potential timing differences)
-      expect(Math.abs(bufferResult.length - pathResult.length)).toBeLessThan(
+      expect(Math.abs(bufferResult.buffer.length - pathResult.buffer.length)).toBeLessThan(
         100
       );
     });
@@ -273,36 +286,38 @@ describe('CoreImage RAW Convert', () => {
 
   describe('Asynchronous Conversion (convertRawAsync)', () => {
     it('should convert RAW to JPEG using Buffer input', async () => {
-      const jpegBuffer = await convertRawAsync(rawBuffer, OutputFormat.JPEG, {
+      const jpegImage = await convertRawAsync(rawBuffer, OutputFormat.JPEG, {
         quality: 0.9,
         lensCorrection: true,
       });
 
-      expect(jpegBuffer).toBeInstanceOf(Buffer);
-      expect(jpegBuffer.length).toBeGreaterThan(0);
-      expect(jpegBuffer[0]).toBe(0xff);
-      expect(jpegBuffer[1]).toBe(0xd8);
+      expect(jpegImage).toHaveProperty('buffer');
+      expect(jpegImage.buffer).toBeInstanceOf(Buffer);
+      expect(jpegImage.buffer.length).toBeGreaterThan(0);
+      expect(jpegImage.buffer[0]).toBe(0xff);
+      expect(jpegImage.buffer[1]).toBe(0xd8);
 
       fs.writeFileSync(
         path.join(TEST_OUTPUT_DIR, 'async_buffer_test.jpg'),
-        jpegBuffer
+        jpegImage.buffer
       );
     });
 
     it('should convert RAW to JPEG using file path input', async () => {
-      const jpegBuffer = await convertRawAsync(tempRawPath, OutputFormat.JPEG, {
+      const jpegImage = await convertRawAsync(tempRawPath, OutputFormat.JPEG, {
         quality: 0.9,
         lensCorrection: true,
       });
 
-      expect(jpegBuffer).toBeInstanceOf(Buffer);
-      expect(jpegBuffer.length).toBeGreaterThan(0);
-      expect(jpegBuffer[0]).toBe(0xff);
-      expect(jpegBuffer[1]).toBe(0xd8);
+      expect(jpegImage).toHaveProperty('buffer');
+      expect(jpegImage.buffer).toBeInstanceOf(Buffer);
+      expect(jpegImage.buffer.length).toBeGreaterThan(0);
+      expect(jpegImage.buffer[0]).toBe(0xff);
+      expect(jpegImage.buffer[1]).toBe(0xd8);
 
       fs.writeFileSync(
         path.join(TEST_OUTPUT_DIR, 'async_path_test.jpg'),
-        jpegBuffer
+        jpegImage.buffer
       );
     });
 
@@ -342,37 +357,40 @@ describe('CoreImage RAW Convert', () => {
         await Promise.all(concurrentPromises);
 
       // Verify JPEG
-      expect(jpegResult).toBeInstanceOf(Buffer);
-      expect(jpegResult.length).toBeGreaterThan(0);
-      expect(jpegResult[0]).toBe(0xff);
-      expect(jpegResult[1]).toBe(0xd8);
+      expect(jpegResult).toHaveProperty('buffer');
+      expect(jpegResult.buffer).toBeInstanceOf(Buffer);
+      expect(jpegResult.buffer.length).toBeGreaterThan(0);
+      expect(jpegResult.buffer[0]).toBe(0xff);
+      expect(jpegResult.buffer[1]).toBe(0xd8);
 
       // Verify PNG
-      expect(pngResult).toBeInstanceOf(Buffer);
-      expect(pngResult.length).toBeGreaterThan(0);
-      expect(pngResult[0]).toBe(0x89);
-      expect(pngResult[1]).toBe(0x50);
-      expect(pngResult[2]).toBe(0x4e);
-      expect(pngResult[3]).toBe(0x47);
+      expect(pngResult).toHaveProperty('buffer');
+      expect(pngResult.buffer).toBeInstanceOf(Buffer);
+      expect(pngResult.buffer.length).toBeGreaterThan(0);
+      expect(pngResult.buffer[0]).toBe(0x89);
+      expect(pngResult.buffer[1]).toBe(0x50);
+      expect(pngResult.buffer[2]).toBe(0x4e);
+      expect(pngResult.buffer[3]).toBe(0x47);
 
       // Verify TIFF
-      expect(tiffResult).toBeInstanceOf(Buffer);
-      expect(tiffResult.length).toBeGreaterThan(0);
-      const tiffHeader = tiffResult.toString('ascii', 0, 2);
+      expect(tiffResult).toHaveProperty('buffer');
+      expect(tiffResult.buffer).toBeInstanceOf(Buffer);
+      expect(tiffResult.buffer.length).toBeGreaterThan(0);
+      const tiffHeader = tiffResult.buffer.toString('ascii', 0, 2);
       expect(['II', 'MM']).toContain(tiffHeader);
 
       // Save results
       fs.writeFileSync(
         path.join(TEST_OUTPUT_DIR, 'concurrent_test.jpg'),
-        jpegResult
+        jpegResult.buffer
       );
       fs.writeFileSync(
         path.join(TEST_OUTPUT_DIR, 'concurrent_test.png'),
-        pngResult
+        pngResult.buffer
       );
       fs.writeFileSync(
         path.join(TEST_OUTPUT_DIR, 'concurrent_test.tif'),
-        tiffResult
+        tiffResult.buffer
       );
     });
 
@@ -391,7 +409,7 @@ describe('CoreImage RAW Convert', () => {
       );
 
       // Results should be very close (within 100 bytes due to potential timing differences)
-      expect(Math.abs(syncResult.length - asyncResult.length)).toBeLessThan(
+      expect(Math.abs(syncResult.buffer.length - asyncResult.buffer.length)).toBeLessThan(
         100
       );
     });
@@ -409,10 +427,11 @@ describe('CoreImage RAW Convert', () => {
       const batchResults = await Promise.all(batchPromises);
 
       batchResults.forEach((result) => {
-        expect(result).toBeInstanceOf(Buffer);
-        expect(result.length).toBeGreaterThan(0);
-        expect(result[0]).toBe(0xff);
-        expect(result[1]).toBe(0xd8);
+        expect(result).toHaveProperty('buffer');
+        expect(result.buffer).toBeInstanceOf(Buffer);
+        expect(result.buffer.length).toBeGreaterThan(0);
+        expect(result.buffer[0]).toBe(0xff);
+        expect(result.buffer[1]).toBe(0xd8);
       });
     });
 
@@ -443,8 +462,9 @@ describe('CoreImage RAW Convert', () => {
       clearInterval(workInterval);
 
       // Verify conversion worked
-      expect(result).toBeInstanceOf(Buffer);
-      expect(result.length).toBeGreaterThan(0);
+      expect(result).toHaveProperty('buffer');
+      expect(result.buffer).toBeInstanceOf(Buffer);
+      expect(result.buffer.length).toBeGreaterThan(0);
 
       // Verify main thread stayed responsive
       const expectedTicks = Math.floor(conversionTime / 50);
@@ -458,7 +478,7 @@ describe('CoreImage RAW Convert', () => {
 
       fs.writeFileSync(
         path.join(TEST_OUTPUT_DIR, 'responsive_test.tif'),
-        result
+        result.buffer
       );
     });
 
@@ -488,40 +508,78 @@ describe('CoreImage RAW Convert', () => {
         Math.floor(syncExpectedTicks * 0.1)
       );
 
-      expect(syncResult).toBeInstanceOf(Buffer);
-      expect(syncResult.length).toBeGreaterThan(0);
+      expect(syncResult.buffer).toBeInstanceOf(Buffer);
+      expect(syncResult.buffer.length).toBeGreaterThan(0);
       expect(syncTickCounter).toBeLessThanOrEqual(maxAllowedSyncTicks);
     });
 
     it('should convert RAW to RGB format asynchronously', async () => {
-      const rgbBuffer = await convertRawAsync(rawBuffer, OutputFormat.RGB);
+      const rgbImage = await convertRawAsync(rawBuffer, OutputFormat.RGB);
 
-      expect(rgbBuffer).toBeInstanceOf(Buffer);
-      expect(rgbBuffer.length).toBeGreaterThan(0);
+      expect(rgbImage).toHaveProperty('buffer');
+      expect(rgbImage.buffer).toBeInstanceOf(Buffer);
+      expect(rgbImage.buffer.length).toBeGreaterThan(0);
 
       // RGB buffer should be exactly 6000x4000x3 = 72,000,000 bytes
-      expect(rgbBuffer.length).toBe(72000000);
-      const totalPixels = rgbBuffer.length / 3;
+      expect(rgbImage.buffer.length).toBe(72000000);
+      const totalPixels = rgbImage.buffer.length / 3;
       expect(totalPixels).toBe(24000000); // 6000 * 4000
+
+      // Test metadata (RGB format has default extractMetadata: false, so no metadata expected)
+      expect(rgbImage.metadata).toBeUndefined();
 
       // Save async RGB data to file (different name to avoid conflicts)
       fs.writeFileSync(
         path.join(TEST_OUTPUT_DIR, 'async_test_output.bin'),
-        rgbBuffer
+        rgbImage.buffer
       );
 
       // Should produce consistent results with sync version
-      const syncRgbBuffer = convertRaw(rawBuffer, OutputFormat.RGB);
-      expect(rgbBuffer.length).toBe(syncRgbBuffer.length);
+      const syncRgbImage = convertRaw(rawBuffer, OutputFormat.RGB);
+      expect(rgbImage.buffer.length).toBe(syncRgbImage.buffer.length);
 
       // Buffers should be identical (raw data should be deterministic)
-      expect(rgbBuffer.equals(syncRgbBuffer)).toBe(true);
+      expect(rgbImage.buffer.equals(syncRgbImage.buffer)).toBe(true);
 
       // Verify RGB values are in valid range
-      for (let i = 0; i < Math.min(100, rgbBuffer.length); i++) {
-        expect(rgbBuffer[i]).toBeGreaterThanOrEqual(0);
-        expect(rgbBuffer[i]).toBeLessThanOrEqual(255);
+      for (let i = 0; i < Math.min(100, rgbImage.buffer.length); i++) {
+        expect(rgbImage.buffer[i]).toBeGreaterThanOrEqual(0);
+        expect(rgbImage.buffer[i]).toBeLessThanOrEqual(255);
       }
+    });
+
+    it('should extract metadata when extractMetadata option is enabled', async () => {
+      // Test JPEG with metadata
+      const jpegWithMetadata = await convertRawAsync(rawBuffer, OutputFormat.JPEG, {
+        extractMetadata: true,
+      });
+
+      expect(jpegWithMetadata).toHaveProperty('buffer');
+      expect(jpegWithMetadata).toHaveProperty('metadata');
+      expect(jpegWithMetadata.metadata).toBeDefined();
+      expect(jpegWithMetadata.metadata?.width).toBe(6000);
+      expect(jpegWithMetadata.metadata?.height).toBe(4000);
+      expect(jpegWithMetadata.metadata?.cameraMake).toBe('SONY');
+      expect(jpegWithMetadata.metadata?.cameraModel).toBe('ZV-E10');
+      expect(jpegWithMetadata.metadata?.focalLength35mm).toBe(22);
+      expect(jpegWithMetadata.metadata?.fNumber).toBe(8);
+      expect(jpegWithMetadata.metadata?.shutterSpeed).toBe(0.008);
+
+      // Test JPEG without metadata (default)
+      const jpegWithoutMetadata = await convertRawAsync(rawBuffer, OutputFormat.JPEG);
+      expect(jpegWithoutMetadata).toHaveProperty('buffer');
+      expect(jpegWithoutMetadata.metadata).toBeUndefined();
+
+      // Test RGB with metadata
+      const rgbWithMetadata = await convertRawAsync(rawBuffer, OutputFormat.RGB, {
+        extractMetadata: true,
+      });
+
+      expect(rgbWithMetadata).toHaveProperty('buffer');
+      expect(rgbWithMetadata).toHaveProperty('metadata');
+      expect(rgbWithMetadata.metadata).toBeDefined();
+      expect(rgbWithMetadata.metadata?.width).toBe(6000);
+      expect(rgbWithMetadata.metadata?.height).toBe(4000);
     });
   });
 

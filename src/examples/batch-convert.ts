@@ -67,7 +67,7 @@ async function batchConvertRawsToJpeg(
             }
           );
 
-          await fs.writeFile(outputPath, jpegBuffer);
+          await fs.writeFile(outputPath, jpegBuffer.buffer);
           console.log(`✓ Converted ${file} → ${path.basename(outputPath)}`);
         } catch (error) {
           console.error(
@@ -116,7 +116,7 @@ async function batchConvertRawsToJpeg(
             quality: 0.85,
           });
 
-          await fs.writeFile(outputPath, jpegBuffer);
+          await fs.writeFile(outputPath, jpegBuffer.buffer);
           console.log(`✓ Converted ${file} → ${path.basename(outputPath)}`);
         } catch (error) {
           console.error(

@@ -30,7 +30,64 @@ struct InternalConversionOptions {
     bool embedThumbnail = false;
     bool optimizeColorForSharing = false;
     bool preserveExifData = true;
+    bool extractMetadata = false;
 };
+
+// Helper function to extract metadata from CGImage source
+static Local<Object> ExtractImageMetadata(CFDictionaryRef sourceMetadataRef, CGImageRef cgImage) {
+    Nan::EscapableHandleScope scope;
+    Local<Object> metadata = Nan::New<Object>();
+    
+    if (cgImage) {
+        // Basic image dimensions
+        Nan::Set(metadata, Nan::New("width").ToLocalChecked(), Nan::New<Number>(CGImageGetWidth(cgImage)));
+        Nan::Set(metadata, Nan::New("height").ToLocalChecked(), Nan::New<Number>(CGImageGetHeight(cgImage)));
+    }
+    
+    if (sourceMetadataRef) {
+        NSDictionary* sourceMetadata = (__bridge NSDictionary*)sourceMetadataRef;
+        
+        // Extract EXIF data
+        NSDictionary* exifDict = sourceMetadata[(NSString*)kCGImagePropertyExifDictionary];
+        if (exifDict) {
+            // Focal length (35mm equivalent)
+            NSNumber* focalLength35mm = exifDict[(NSString*)kCGImagePropertyExifFocalLenIn35mmFilm];
+            if (focalLength35mm) {
+                Nan::Set(metadata, Nan::New("focalLength35mm").ToLocalChecked(), Nan::New<Number>([focalLength35mm doubleValue]));
+            }
+            
+            // Shutter speed
+            NSNumber* exposureTime = exifDict[(NSString*)kCGImagePropertyExifExposureTime];
+            if (exposureTime) {
+                Nan::Set(metadata, Nan::New("shutterSpeed").ToLocalChecked(), Nan::New<Number>([exposureTime doubleValue]));
+            }
+            
+            // F-number
+            NSNumber* fNumber = exifDict[(NSString*)kCGImagePropertyExifFNumber];
+            if (fNumber) {
+                Nan::Set(metadata, Nan::New("fNumber").ToLocalChecked(), Nan::New<Number>([fNumber doubleValue]));
+            }
+        }
+        
+        // Extract TIFF data (camera make/model)
+        NSDictionary* tiffDict = sourceMetadata[(NSString*)kCGImagePropertyTIFFDictionary];
+        if (tiffDict) {
+            // Camera make
+            NSString* make = tiffDict[(NSString*)kCGImagePropertyTIFFMake];
+            if (make) {
+                Nan::Set(metadata, Nan::New("cameraMake").ToLocalChecked(), Nan::New<String>([make UTF8String]).ToLocalChecked());
+            }
+            
+            // Camera model
+            NSString* model = tiffDict[(NSString*)kCGImagePropertyTIFFModel];
+            if (model) {
+                Nan::Set(metadata, Nan::New("cameraModel").ToLocalChecked(), Nan::New<String>([model UTF8String]).ToLocalChecked());
+            }
+        }
+    }
+    
+    return scope.Escape(metadata);
+}
 
 // Helper function to extract RGB data from CGImage
 static bool ExtractRgbData(CGImageRef cgImage, CGColorSpaceRef colorSpace, char** outputData, size_t* outputLength) {
@@ -179,6 +236,9 @@ private:
     // Output data
     char* outputData_;
     size_t outputLength_;
+    
+    // Metadata for RGB format
+    Nan::Persistent<Object> metadata_;
 };
 
 // Implementation of AsyncWorker methods
@@ -345,6 +405,12 @@ void ConvertRawAsyncWorker::Execute() {
             return;
         }
         
+        // Extract metadata if requested
+        if (options_.extractMetadata) {
+            Local<Object> metadataObj = ExtractImageMetadata(sourceMetadataRef, cgImage);
+            metadata_.Reset(metadataObj);
+        }
+        
         // Handle RGB format separately (raw bitmap data)
         std::string format = format_;
         if (format == "rgb") {
@@ -462,9 +528,18 @@ void ConvertRawAsyncWorker::Execute() {
 void ConvertRawAsyncWorker::HandleOKCallback() {
     Nan::HandleScope scope;
     
+    // Always return an OutputImage object with buffer and optional metadata
+    Local<Object> outputImage = Nan::New<Object>();
+    Nan::Set(outputImage, Nan::New("buffer").ToLocalChecked(), Nan::CopyBuffer(outputData_, outputLength_).ToLocalChecked());
+    
+    // Add metadata if it was extracted
+    if (!metadata_.IsEmpty()) {
+        Nan::Set(outputImage, Nan::New("metadata").ToLocalChecked(), Nan::New(metadata_));
+    }
+    
     Local<Value> argv[] = {
         Nan::Null(),
-        Nan::CopyBuffer(outputData_, outputLength_).ToLocalChecked()
+        outputImage
     };
     
     callback->Call(2, argv, async_resource);
@@ -523,6 +598,7 @@ NAN_METHOD(ConvertRaw) {
     bool embedThumbnail = false;
     bool optimizeColorForSharing = false;
     bool preserveExifData = true; // Default to true to preserve metadata
+    bool extractMetadata = false;
     
     if (info.Length() >= 3 && info[2]->IsObject()) {
         Local<Object> options = info[2].As<Object>();
@@ -575,6 +651,7 @@ NAN_METHOD(ConvertRaw) {
         getBoolOption("embedThumbnail", embedThumbnail);
         getBoolOption("optimizeColorForSharing", optimizeColorForSharing);
         getBoolOption("preserveExifData", preserveExifData);
+        getBoolOption("extractMetadata", extractMetadata);
     }
     
     // Determine input type and get NSData
@@ -755,14 +832,26 @@ NAN_METHOD(ConvertRaw) {
             return;
         }
         
+        // Extract metadata if requested (for all formats)
+        Local<Object> metadata;
+        if (extractMetadata) {
+            metadata = ExtractImageMetadata(sourceMetadataRef, cgImage);
+        }
+        
         // Handle RGB format separately (raw bitmap data)
         if (format == "rgb") {
             char* rgbData = nullptr;
             size_t rgbLength = 0;
             
             if (ExtractRgbData(cgImage, colorSpace, &rgbData, &rgbLength)) {
-                // Return the RGB data as a Node.js Buffer
-                Local<Object> rgbBuffer = Nan::CopyBuffer(rgbData, rgbLength).ToLocalChecked();
+                // Create OutputImage object
+                Local<Object> rgbResult = Nan::New<Object>();
+                Nan::Set(rgbResult, Nan::New("buffer").ToLocalChecked(), Nan::CopyBuffer(rgbData, rgbLength).ToLocalChecked());
+                
+                // Add metadata if extracted
+                if (extractMetadata) {
+                    Nan::Set(rgbResult, Nan::New("metadata").ToLocalChecked(), metadata);
+                }
                 
                 delete[] rgbData;
                 CGColorSpaceRelease(colorSpace);
@@ -771,7 +860,7 @@ NAN_METHOD(ConvertRaw) {
                     CFRelease(sourceMetadataRef);
                 }
                 
-                info.GetReturnValue().Set(rgbBuffer);
+                info.GetReturnValue().Set(rgbResult);
                 return;
             } else {
                 CGColorSpaceRelease(colorSpace);
@@ -861,6 +950,16 @@ NAN_METHOD(ConvertRaw) {
             return;
         }
         
+        // Create OutputImage object with buffer and optional metadata
+        Local<Object> result = Nan::New<Object>();
+        Nan::Set(result, Nan::New("buffer").ToLocalChecked(),
+                Nan::CopyBuffer((const char*)[outputData bytes], [outputData length]).ToLocalChecked());
+        
+        // Add metadata if extracted
+        if (extractMetadata) {
+            Nan::Set(result, Nan::New("metadata").ToLocalChecked(), metadata);
+        }
+        
         // Cleanup
         CFRelease(destination);
         CGImageRelease(cgImage);
@@ -869,10 +968,8 @@ NAN_METHOD(ConvertRaw) {
             CFRelease(sourceMetadataRef);
         }
         
-        // Return the output data as a Node.js Buffer
-        info.GetReturnValue().Set(
-            Nan::CopyBuffer((const char*)[outputData bytes], [outputData length]).ToLocalChecked()
-        );
+        // Return the OutputImage object
+        info.GetReturnValue().Set(result);
     }
 }
 
@@ -989,6 +1086,7 @@ NAN_METHOD(ConvertRawAsync) {
         getBoolOption("embedThumbnail", options.embedThumbnail);
         getBoolOption("optimizeColorForSharing", options.optimizeColorForSharing);
         getBoolOption("preserveExifData", options.preserveExifData);
+        getBoolOption("extractMetadata", options.extractMetadata);
     }
     
     // Create and queue the async worker
