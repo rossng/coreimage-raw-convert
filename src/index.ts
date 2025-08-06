@@ -160,6 +160,12 @@ interface RawConverterAddon {
     format: string,
     options: InternalConversionOptions
   ): Buffer;
+  convertRawAsync(
+    input: Buffer | string,
+    format: string,
+    options: InternalConversionOptions,
+    callback: (error: Error | null, result?: Buffer) => void
+  ): void;
 }
 
 /**
@@ -209,4 +215,76 @@ export function convertRaw<F extends OutputFormat>(
     normalizedFormat,
     mergedOptions
   );
+}
+
+/**
+ * Convert a RAW image to the specified format asynchronously with type-safe options
+ * @param input - Buffer containing RAW image data or file path to RAW image
+ * @param format - Output format (enum value)
+ * @param options - Format-specific conversion options
+ * @throws {TypeError} If input is not a Buffer or string
+ * @throws {Error} If the buffer is empty, file doesn't exist, or format is unsupported
+ * @returns Promise<Buffer> containing image data in the specified format
+ */
+export function convertRawAsync<F extends OutputFormat>(
+  input: Buffer | string,
+  format: F,
+  options?: ConversionOptions & FormatQualityOptions[F]
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    // Input validation
+    if (!Buffer.isBuffer(input) && typeof input !== 'string') {
+      reject(new TypeError('Input must be a Buffer or file path string'));
+      return;
+    }
+
+    if (Buffer.isBuffer(input) && input.length === 0) {
+      reject(new Error('Input buffer is empty'));
+      return;
+    }
+
+    if (typeof input === 'string' && input.trim() === '') {
+      reject(new Error('File path cannot be empty'));
+      return;
+    }
+
+    if (typeof format !== 'string' || format.trim() === '') {
+      reject(new TypeError('Format must be a non-empty string'));
+      return;
+    }
+
+    const normalizedFormat = format.toLowerCase().trim() as OutputFormat;
+    const supportedFormats = Object.values(OutputFormat);
+
+    if (!supportedFormats.includes(normalizedFormat)) {
+      reject(new Error(
+        `Unsupported format: ${format}. Supported formats: ${supportedFormats.join(', ')}`
+      ));
+      return;
+    }
+
+    // Handle options
+    const mergedOptions: InternalConversionOptions = options || {};
+
+    if (mergedOptions !== null && typeof mergedOptions !== 'object') {
+      reject(new TypeError('Options must be an object'));
+      return;
+    }
+
+    // Call native async function
+    (addon as RawConverterAddon).convertRawAsync(
+      input,
+      normalizedFormat,
+      mergedOptions,
+      (error: Error | null, result?: Buffer) => {
+        if (error) {
+          reject(error);
+        } else if (result) {
+          resolve(result);
+        } else {
+          reject(new Error('Unknown error occurred during conversion'));
+        }
+      }
+    );
+  });
 }
