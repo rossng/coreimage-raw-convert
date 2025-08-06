@@ -261,9 +261,11 @@ export function convertRawAsync<F extends OutputFormat>(
     const supportedFormats = Object.values(OutputFormat);
 
     if (!supportedFormats.includes(normalizedFormat)) {
-      reject(new Error(
-        `Unsupported format: ${format}. Supported formats: ${supportedFormats.join(', ')}`
-      ));
+      reject(
+        new Error(
+          `Unsupported format: ${format}. Supported formats: ${supportedFormats.join(', ')}`
+        )
+      );
       return;
     }
 

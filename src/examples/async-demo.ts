@@ -1,13 +1,13 @@
 #!/usr/bin/env node
+import { promises as fs } from 'fs';
 import path from 'path';
 import { convertRaw, convertRawAsync, OutputFormat } from '../index.js';
-import { promises as fs } from 'fs';
 
 async function demonstrateAsyncUsage() {
   console.log('🚀 Demonstrating convertRawAsync usage\n');
 
   const inputPath = path.join(process.cwd(), 'data', 'DSC00053.ARW');
-  
+
   try {
     // Check if file exists
     await fs.access(inputPath);
@@ -27,10 +27,12 @@ async function demonstrateAsyncUsage() {
       quality: 0.9,
       lensCorrection: true,
       preserveExifData: true,
-      scaleFactor: 0.5 // Half size for faster processing
+      scaleFactor: 0.5, // Half size for faster processing
     });
     const time1 = Date.now() - start1;
-    console.log(`   ✓ Converted in ${time1}ms, output: ${result1.length} bytes\n`);
+    console.log(
+      `   ✓ Converted in ${time1}ms, output: ${result1.length} bytes\n`
+    );
 
     // Example 2: Async usage with Buffer
     console.log('💾 Example 2: Using Buffer');
@@ -38,10 +40,12 @@ async function demonstrateAsyncUsage() {
     const start2 = Date.now();
     const result2 = await convertRawAsync(rawBuffer, OutputFormat.PNG, {
       lensCorrection: true,
-      scaleFactor: 0.5
+      scaleFactor: 0.5,
     });
     const time2 = Date.now() - start2;
-    console.log(`   ✓ Converted in ${time2}ms, output: ${result2.length} bytes\n`);
+    console.log(
+      `   ✓ Converted in ${time2}ms, output: ${result2.length} bytes\n`
+    );
 
     // Example 3: Multiple concurrent conversions
     console.log('⚡ Example 3: Multiple concurrent conversions');
@@ -51,10 +55,12 @@ async function demonstrateAsyncUsage() {
       const result = await convertRawAsync(inputPath, format, {
         quality: 0.8,
         scaleFactor: 0.25, // Quarter size for speed
-        lensCorrection: true
+        lensCorrection: true,
       });
       const time = Date.now() - start;
-      console.log(`   ✓ ${format.toUpperCase()}: ${result.length} bytes in ${time}ms`);
+      console.log(
+        `   ✓ ${format.toUpperCase()}: ${result.length} bytes in ${time}ms`
+      );
       return { format, result, time };
     });
 
@@ -77,21 +83,22 @@ async function demonstrateAsyncUsage() {
     const syncResult = convertRaw(rawBuffer, OutputFormat.JPEG, {
       quality: 0.9,
       lensCorrection: true,
-      scaleFactor: 0.5
+      scaleFactor: 0.5,
     });
     const syncTime = Date.now() - syncStart;
-    
+
     console.log(`   Sync:  ${syncTime}ms (blocks Node.js event loop)`);
     console.log(`   Async: ${time1}ms (non-blocking, file path)`);
     console.log(`   Async: ${time2}ms (non-blocking, buffer)`);
-    
+
     console.log('\n🎉 Demo complete!');
     console.log('\n💡 Key benefits of convertRawAsync:');
     console.log('   • Non-blocking: Node.js event loop stays responsive');
     console.log('   • File path input: Most efficient (no buffer copying)');
-    console.log('   • Concurrent processing: Process multiple files simultaneously');
+    console.log(
+      '   • Concurrent processing: Process multiple files simultaneously'
+    );
     console.log('   • Same image quality and options as sync version');
-
   } catch (error) {
     console.error('❌ Demo failed:', (error as Error).message);
     process.exit(1);

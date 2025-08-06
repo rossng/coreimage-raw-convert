@@ -1,8 +1,8 @@
-import { convertRaw, convertRawAsync, OutputFormat } from '../index.js';
-import { loadSampleImage } from './load-image.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { convertRaw, convertRawAsync, OutputFormat } from '../index.js';
+import { loadSampleImage } from './load-image.js';
 
 let ITERATIONS = 5;
 
@@ -139,7 +139,9 @@ function parseCliOptions(): CliOptions {
             if (input === 'path' || input === 'buffer') {
               validInputs.push(input);
             } else {
-              throw new Error(`Invalid input: ${input}. Use 'path' or 'buffer'`);
+              throw new Error(
+                `Invalid input: ${input}. Use 'path' or 'buffer'`
+              );
             }
           }
           options.input = validInputs;
@@ -280,7 +282,9 @@ async function benchmark(): Promise<void> {
         const formatName = getFormatDisplayName(format);
 
         for (const config of testConfigs) {
-          console.log(`Benchmarking ${formatName} - ${config.name} (${mode}, ${inputType})...`);
+          console.log(
+            `Benchmarking ${formatName} - ${config.name} (${mode}, ${inputType})...`
+          );
 
           const times: number[] = [];
           let outputSize = 0;
@@ -377,7 +381,12 @@ async function benchmark(): Promise<void> {
   const timeWidth = 15;
   const sizeWidth = 15;
   const totalWidth =
-    formatWidth + configWidth + modeWidth + inputWidth + timeWidth * 3 + sizeWidth;
+    formatWidth +
+    configWidth +
+    modeWidth +
+    inputWidth +
+    timeWidth * 3 +
+    sizeWidth;
 
   console.log('\n' + '='.repeat(totalWidth));
   console.log('BENCHMARK RESULTS');
@@ -433,12 +442,14 @@ async function benchmark(): Promise<void> {
         'Async (ms)'.padEnd(timeWidth) +
         'Speedup'.padEnd(12)
     );
-    console.log('-'.repeat(formatWidth + configWidth + inputWidth + timeWidth * 2 + 12));
+    console.log(
+      '-'.repeat(formatWidth + configWidth + inputWidth + timeWidth * 2 + 12)
+    );
 
     for (const syncResult of syncResults) {
       const asyncResult = asyncResults.find(
         (r) =>
-          r.format === syncResult.format && 
+          r.format === syncResult.format &&
           r.config === syncResult.config &&
           r.input === syncResult.input
       );
@@ -449,8 +460,8 @@ async function benchmark(): Promise<void> {
           speedup > 1
             ? `${speedup.toFixed(2)}x faster`
             : speedup < 1
-            ? `${(1 / speedup).toFixed(2)}x slower`
-            : 'Same';
+              ? `${(1 / speedup).toFixed(2)}x slower`
+              : 'Same';
 
         console.log(
           syncResult.format.padEnd(formatWidth) +
@@ -463,7 +474,9 @@ async function benchmark(): Promise<void> {
       }
     }
 
-    console.log('='.repeat(formatWidth + configWidth + inputWidth + timeWidth * 2 + 12));
+    console.log(
+      '='.repeat(formatWidth + configWidth + inputWidth + timeWidth * 2 + 12)
+    );
   }
 
   // Print path vs buffer comparison if both were tested
@@ -487,12 +500,14 @@ async function benchmark(): Promise<void> {
         'Buffer (ms)'.padEnd(timeWidth) +
         'Speedup'.padEnd(12)
     );
-    console.log('-'.repeat(formatWidth + configWidth + modeWidth + timeWidth * 2 + 12));
+    console.log(
+      '-'.repeat(formatWidth + configWidth + modeWidth + timeWidth * 2 + 12)
+    );
 
     for (const pathResult of pathResults) {
       const bufferResult = bufferResults.find(
         (r) =>
-          r.format === pathResult.format && 
+          r.format === pathResult.format &&
           r.config === pathResult.config &&
           r.mode === pathResult.mode
       );
@@ -503,8 +518,8 @@ async function benchmark(): Promise<void> {
           speedup > 1
             ? `Path ${speedup.toFixed(2)}x faster`
             : speedup < 1
-            ? `Buffer ${(1 / speedup).toFixed(2)}x faster`
-            : 'Same';
+              ? `Buffer ${(1 / speedup).toFixed(2)}x faster`
+              : 'Same';
 
         console.log(
           pathResult.format.padEnd(formatWidth) +
@@ -517,7 +532,9 @@ async function benchmark(): Promise<void> {
       }
     }
 
-    console.log('='.repeat(formatWidth + configWidth + modeWidth + timeWidth * 2 + 12));
+    console.log(
+      '='.repeat(formatWidth + configWidth + modeWidth + timeWidth * 2 + 12)
+    );
   }
 
   console.log(`\nIterations per format: ${ITERATIONS}`);

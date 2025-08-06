@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { loadSampleImage } from './examples/load-image.js';
 import { convertRaw, convertRawAsync, OutputFormat } from './index.js';
 
@@ -48,15 +48,15 @@ describe('CoreImage RAW Convert', () => {
 
     it('should convert RAW to JPEG', () => {
       const jpegBuffer = convertRaw(rawBuffer, OutputFormat.JPEG);
-      
+
       expect(jpegBuffer).toBeInstanceOf(Buffer);
       expect(jpegBuffer.length).toBeGreaterThan(0);
-      
+
       // Verify JPEG header
       expect(jpegBuffer[0]).toBe(0xff);
       expect(jpegBuffer[1]).toBe(0xd8);
       expect(jpegBuffer[2]).toBe(0xff);
-      
+
       // Save and verify file
       const outputPath = path.join(TEST_OUTPUT_DIR, 'test_output.jpg');
       fs.writeFileSync(outputPath, jpegBuffer);
@@ -97,7 +97,10 @@ describe('CoreImage RAW Convert', () => {
       expect(pngBuffer[1]).toBe(0x50);
       expect(pngBuffer[2]).toBe(0x4e);
       expect(pngBuffer[3]).toBe(0x47);
-      fs.writeFileSync(path.join(TEST_OUTPUT_DIR, 'test_output.png'), pngBuffer);
+      fs.writeFileSync(
+        path.join(TEST_OUTPUT_DIR, 'test_output.png'),
+        pngBuffer
+      );
 
       // Test TIFF format
       const tiffBuffer = convertRaw(rawBuffer, OutputFormat.TIFF);
@@ -105,23 +108,35 @@ describe('CoreImage RAW Convert', () => {
       expect(tiffBuffer.length).toBeGreaterThan(0);
       const tiffHeader = tiffBuffer.toString('ascii', 0, 2);
       expect(['II', 'MM']).toContain(tiffHeader);
-      fs.writeFileSync(path.join(TEST_OUTPUT_DIR, 'test_output.tif'), tiffBuffer);
+      fs.writeFileSync(
+        path.join(TEST_OUTPUT_DIR, 'test_output.tif'),
+        tiffBuffer
+      );
 
       // Test HEIF format (may not be supported on all systems)
       try {
         const heifBuffer = convertRaw(rawBuffer, OutputFormat.HEIF);
         expect(heifBuffer).toBeInstanceOf(Buffer);
         expect(heifBuffer.length).toBeGreaterThan(0);
-        fs.writeFileSync(path.join(TEST_OUTPUT_DIR, 'test_output.heif'), heifBuffer);
+        fs.writeFileSync(
+          path.join(TEST_OUTPUT_DIR, 'test_output.heif'),
+          heifBuffer
+        );
       } catch (e) {
         // HEIF may not be supported on all systems, that's OK
       }
     });
 
     it('should reject invalid formats', () => {
-      expect(() => convertRaw(rawBuffer, 'bmp' as OutputFormat)).toThrow('Unsupported format');
-      expect(() => convertRaw(rawBuffer, '' as OutputFormat)).toThrow('Format must be a non-empty string');
-      expect(() => convertRaw(rawBuffer, 123 as any)).toThrow('Format must be a non-empty string');
+      expect(() => convertRaw(rawBuffer, 'bmp' as OutputFormat)).toThrow(
+        'Unsupported format'
+      );
+      expect(() => convertRaw(rawBuffer, '' as OutputFormat)).toThrow(
+        'Format must be a non-empty string'
+      );
+      expect(() => convertRaw(rawBuffer, 123 as any)).toThrow(
+        'Format must be a non-empty string'
+      );
     });
 
     it('should support various conversion options', () => {
@@ -190,7 +205,10 @@ describe('CoreImage RAW Convert', () => {
       expect(jpegBuffer[0]).toBe(0xff);
       expect(jpegBuffer[1]).toBe(0xd8);
 
-      fs.writeFileSync(path.join(TEST_OUTPUT_DIR, 'sync_path_test.jpg'), jpegBuffer);
+      fs.writeFileSync(
+        path.join(TEST_OUTPUT_DIR, 'sync_path_test.jpg'),
+        jpegBuffer
+      );
     });
 
     it('should handle file path error cases', () => {
@@ -221,7 +239,9 @@ describe('CoreImage RAW Convert', () => {
       const pathResult = convertRaw(tempRawPath, OutputFormat.JPEG, options);
 
       // Results should be very close (within 100 bytes due to potential timing differences)
-      expect(Math.abs(bufferResult.length - pathResult.length)).toBeLessThan(100);
+      expect(Math.abs(bufferResult.length - pathResult.length)).toBeLessThan(
+        100
+      );
     });
   });
 
@@ -237,7 +257,10 @@ describe('CoreImage RAW Convert', () => {
       expect(jpegBuffer[0]).toBe(0xff);
       expect(jpegBuffer[1]).toBe(0xd8);
 
-      fs.writeFileSync(path.join(TEST_OUTPUT_DIR, 'async_buffer_test.jpg'), jpegBuffer);
+      fs.writeFileSync(
+        path.join(TEST_OUTPUT_DIR, 'async_buffer_test.jpg'),
+        jpegBuffer
+      );
     });
 
     it('should convert RAW to JPEG using file path input', async () => {
@@ -251,35 +274,46 @@ describe('CoreImage RAW Convert', () => {
       expect(jpegBuffer[0]).toBe(0xff);
       expect(jpegBuffer[1]).toBe(0xd8);
 
-      fs.writeFileSync(path.join(TEST_OUTPUT_DIR, 'async_path_test.jpg'), jpegBuffer);
+      fs.writeFileSync(
+        path.join(TEST_OUTPUT_DIR, 'async_path_test.jpg'),
+        jpegBuffer
+      );
     });
 
     it('should handle async error cases', async () => {
       // Non-existent file
-      await expect(convertRawAsync('/nonexistent/file.arw', OutputFormat.JPEG))
-        .rejects.toThrow('Failed to read file from path');
+      await expect(
+        convertRawAsync('/nonexistent/file.arw', OutputFormat.JPEG)
+      ).rejects.toThrow('Failed to read file from path');
 
       // Empty buffer
-      await expect(convertRawAsync(Buffer.alloc(0), OutputFormat.JPEG))
-        .rejects.toThrow('Input buffer is empty');
+      await expect(
+        convertRawAsync(Buffer.alloc(0), OutputFormat.JPEG)
+      ).rejects.toThrow('Input buffer is empty');
 
       // Invalid input type
-      await expect(convertRawAsync(123 as any, OutputFormat.JPEG))
-        .rejects.toThrow('Input must be a Buffer or file path string');
+      await expect(
+        convertRawAsync(123 as any, OutputFormat.JPEG)
+      ).rejects.toThrow('Input must be a Buffer or file path string');
 
       // Unsupported format
-      await expect(convertRawAsync(rawBuffer, 'bmp' as OutputFormat))
-        .rejects.toThrow('Unsupported format');
+      await expect(
+        convertRawAsync(rawBuffer, 'bmp' as OutputFormat)
+      ).rejects.toThrow('Unsupported format');
     });
 
     it('should handle multiple concurrent conversions', async () => {
       const concurrentPromises = [
-        convertRawAsync(rawBuffer, OutputFormat.JPEG, { quality: 0.8, scaleFactor: 0.5 }),
+        convertRawAsync(rawBuffer, OutputFormat.JPEG, {
+          quality: 0.8,
+          scaleFactor: 0.5,
+        }),
         convertRawAsync(tempRawPath, OutputFormat.PNG, { scaleFactor: 0.5 }),
         convertRawAsync(rawBuffer, OutputFormat.TIFF, { scaleFactor: 0.5 }),
       ];
 
-      const [jpegResult, pngResult, tiffResult] = await Promise.all(concurrentPromises);
+      const [jpegResult, pngResult, tiffResult] =
+        await Promise.all(concurrentPromises);
 
       // Verify JPEG
       expect(jpegResult).toBeInstanceOf(Buffer);
@@ -302,9 +336,18 @@ describe('CoreImage RAW Convert', () => {
       expect(['II', 'MM']).toContain(tiffHeader);
 
       // Save results
-      fs.writeFileSync(path.join(TEST_OUTPUT_DIR, 'concurrent_test.jpg'), jpegResult);
-      fs.writeFileSync(path.join(TEST_OUTPUT_DIR, 'concurrent_test.png'), pngResult);
-      fs.writeFileSync(path.join(TEST_OUTPUT_DIR, 'concurrent_test.tif'), tiffResult);
+      fs.writeFileSync(
+        path.join(TEST_OUTPUT_DIR, 'concurrent_test.jpg'),
+        jpegResult
+      );
+      fs.writeFileSync(
+        path.join(TEST_OUTPUT_DIR, 'concurrent_test.png'),
+        pngResult
+      );
+      fs.writeFileSync(
+        path.join(TEST_OUTPUT_DIR, 'concurrent_test.tif'),
+        tiffResult
+      );
     });
 
     it('should produce consistent results with sync version', async () => {
@@ -315,17 +358,23 @@ describe('CoreImage RAW Convert', () => {
       };
 
       const syncResult = convertRaw(rawBuffer, OutputFormat.JPEG, options);
-      const asyncResult = await convertRawAsync(rawBuffer, OutputFormat.JPEG, options);
+      const asyncResult = await convertRawAsync(
+        rawBuffer,
+        OutputFormat.JPEG,
+        options
+      );
 
       // Results should be very close (within 100 bytes due to potential timing differences)
-      expect(Math.abs(syncResult.length - asyncResult.length)).toBeLessThan(100);
+      expect(Math.abs(syncResult.length - asyncResult.length)).toBeLessThan(
+        100
+      );
     });
 
     it('should handle large batches without issues', async () => {
       const batchSize = 5;
       const batchPromises = Array.from({ length: batchSize }, (_, i) =>
         convertRawAsync(rawBuffer, OutputFormat.JPEG, {
-          quality: 0.7 + (i * 0.05),
+          quality: 0.7 + i * 0.05,
           scaleFactor: 0.3,
           lensCorrection: i % 2 === 0,
         })
@@ -381,7 +430,10 @@ describe('CoreImage RAW Convert', () => {
       expect(tickCounter).toBeGreaterThanOrEqual(minExpectedTicks);
       expect(tickCounter).toBeLessThanOrEqual(maxExpectedTicks);
 
-      fs.writeFileSync(path.join(TEST_OUTPUT_DIR, 'responsive_test.tif'), result);
+      fs.writeFileSync(
+        path.join(TEST_OUTPUT_DIR, 'responsive_test.tif'),
+        result
+      );
     });
 
     it('should demonstrate blocking difference with sync version', async () => {
@@ -405,7 +457,10 @@ describe('CoreImage RAW Convert', () => {
 
       // Verify sync version blocks the main thread
       const syncExpectedTicks = Math.floor(syncTime / 50);
-      const maxAllowedSyncTicks = Math.max(1, Math.floor(syncExpectedTicks * 0.1));
+      const maxAllowedSyncTicks = Math.max(
+        1,
+        Math.floor(syncExpectedTicks * 0.1)
+      );
 
       expect(syncResult).toBeInstanceOf(Buffer);
       expect(syncResult.length).toBeGreaterThan(0);
@@ -430,11 +485,13 @@ describe('CoreImage RAW Convert', () => {
 
     it('should show performance benefits with concurrent async operations', async () => {
       const batchSize = 3;
-      
+
       // Sequential async (one at a time)
       const sequentialStart = Date.now();
       for (let i = 0; i < batchSize; i++) {
-        await convertRawAsync(rawBuffer, OutputFormat.JPEG, { scaleFactor: 0.5 });
+        await convertRawAsync(rawBuffer, OutputFormat.JPEG, {
+          scaleFactor: 0.5,
+        });
       }
       const sequentialTime = Date.now() - sequentialStart;
 
