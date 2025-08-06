@@ -27,7 +27,8 @@
     "demo": "npm run build:ts && node dist/examples/demo.js",
     "async-demo": "npm run build:ts && node dist/examples/async-demo.js",
     "benchmark": "npm run build:ts && node dist/examples/benchmark.js",
-    "batch-convert": "npm run build:ts && node dist/examples/batch-convert.js"
+    "batch-convert": "npm run build:ts && node dist/examples/batch-convert.js",
+    "throughput": "npm run build:ts && node dist/examples/throughput.js"
   },
   "keywords": [
     "raw",
@@ -51,6 +52,7 @@
     "@vitest/ui": "^3.2.4",
     "express": "^5.1.0",
     "node-gyp": "^11.3.0",
+    "p-queue": "^8.1.0",
     "prettier": "^3.6.2",
     "prettier-plugin-organize-imports": "^4.2.0",
     "semantic-release": "^24.2.7",
