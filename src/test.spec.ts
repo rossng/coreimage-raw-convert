@@ -65,10 +65,10 @@ describe('CoreImage RAW Convert', () => {
     });
 
     it('should handle error cases correctly', () => {
-      // Non-buffer input
+      // Invalid input type (neither buffer nor string)
       expect(() => {
-        convertRaw('not a buffer' as any, OutputFormat.JPEG);
-      }).toThrow('Input must be a Buffer');
+        convertRaw(123 as any, OutputFormat.JPEG);
+      }).toThrow('Input must be a Buffer or file path string');
 
       // Empty buffer
       expect(() => {
@@ -177,6 +177,51 @@ describe('CoreImage RAW Convert', () => {
 
       const metadataWithoutExif = await sharp(noExifPath).metadata();
       expect(metadataWithoutExif.exif).toBeUndefined();
+    });
+
+    it('should convert RAW to JPEG using file path input', () => {
+      const jpegBuffer = convertRaw(tempRawPath, OutputFormat.JPEG, {
+        quality: 0.9,
+        lensCorrection: true,
+      });
+
+      expect(jpegBuffer).toBeInstanceOf(Buffer);
+      expect(jpegBuffer.length).toBeGreaterThan(0);
+      expect(jpegBuffer[0]).toBe(0xff);
+      expect(jpegBuffer[1]).toBe(0xd8);
+
+      fs.writeFileSync(path.join(TEST_OUTPUT_DIR, 'sync_path_test.jpg'), jpegBuffer);
+    });
+
+    it('should handle file path error cases', () => {
+      // Non-existent file
+      expect(() => {
+        convertRaw('/nonexistent/file.arw', OutputFormat.JPEG);
+      }).toThrow('Failed to read file from path');
+
+      // Empty file path
+      expect(() => {
+        convertRaw('', OutputFormat.JPEG);
+      }).toThrow('File path cannot be empty');
+
+      // Invalid input type
+      expect(() => {
+        convertRaw(123 as any, OutputFormat.JPEG);
+      }).toThrow('Input must be a Buffer or file path string');
+    });
+
+    it('should produce consistent results with Buffer and file path inputs', () => {
+      const options = {
+        quality: 0.85,
+        lensCorrection: true,
+        preserveExifData: false,
+      };
+
+      const bufferResult = convertRaw(rawBuffer, OutputFormat.JPEG, options);
+      const pathResult = convertRaw(tempRawPath, OutputFormat.JPEG, options);
+
+      // Results should be very close (within 100 bytes due to potential timing differences)
+      expect(Math.abs(bufferResult.length - pathResult.length)).toBeLessThan(100);
     });
   });
 

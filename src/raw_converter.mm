@@ -362,8 +362,8 @@ void ConvertRawAsyncWorker::HandleErrorCallback() {
 }
 
 NAN_METHOD(ConvertRaw) {
-    if (info.Length() < 1 || !node::Buffer::HasInstance(info[0])) {
-        Nan::ThrowTypeError("First argument must be a Buffer containing RAW image data");
+    if (info.Length() < 1) {
+        Nan::ThrowTypeError("First argument must be a Buffer or file path string");
         return;
     }
     
@@ -457,12 +457,43 @@ NAN_METHOD(ConvertRaw) {
         getBoolOption("preserveExifData", preserveExifData);
     }
     
-    Local<Object> bufferObj = info[0].As<Object>();
-    char* rawData = node::Buffer::Data(bufferObj);
-    size_t rawDataLength = node::Buffer::Length(bufferObj);
+    // Determine input type and get NSData
+    NSData* imageData = nil;
     
     @autoreleasepool {
-        NSData* imageData = [NSData dataWithBytes:rawData length:rawDataLength];
+        if (info[0]->IsString()) {
+            // File path input
+            Nan::Utf8String pathStr(info[0]);
+            std::string filePath = std::string(*pathStr);
+            
+            if (filePath.empty()) {
+                Nan::ThrowError("File path cannot be empty");
+                return;
+            }
+            
+            NSString* nsFilePath = [NSString stringWithUTF8String:filePath.c_str()];
+            imageData = [NSData dataWithContentsOfFile:nsFilePath];
+            
+            if (!imageData) {
+                Nan::ThrowError("Failed to read file from path");
+                return;
+            }
+        } else if (node::Buffer::HasInstance(info[0])) {
+            // Buffer input
+            Local<Object> bufferObj = info[0].As<Object>();
+            char* rawData = node::Buffer::Data(bufferObj);
+            size_t rawDataLength = node::Buffer::Length(bufferObj);
+            
+            if (rawDataLength == 0) {
+                Nan::ThrowError("Input buffer is empty");
+                return;
+            }
+            
+            imageData = [NSData dataWithBytes:rawData length:rawDataLength];
+        } else {
+            Nan::ThrowTypeError("First argument must be a Buffer or file path string");
+            return;
+        }
         
         // Write data to a temporary file because CIRAWFilter works better with file URLs
         NSString* tempPath = [NSTemporaryDirectory() stringByAppendingPathComponent:[[NSUUID UUID] UUIDString]];

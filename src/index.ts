@@ -156,7 +156,7 @@ interface InternalConversionOptions extends ConversionOptions {
  */
 interface RawConverterAddon {
   convertRaw(
-    rawImageBuffer: Buffer,
+    input: Buffer | string,
     format: string,
     options: InternalConversionOptions
   ): Buffer;
@@ -169,25 +169,29 @@ interface RawConverterAddon {
 }
 
 /**
- * Convert a RAW image buffer to the specified format with type-safe options
- * @param rawImageBuffer - Buffer containing RAW image data
+ * Convert a RAW image to the specified format with type-safe options
+ * @param input - Buffer containing RAW image data or file path to RAW image
  * @param format - Output format (enum value)
  * @param options - Format-specific conversion options
- * @throws {TypeError} If rawImageBuffer is not a Buffer
- * @throws {Error} If the buffer is empty or format is unsupported
+ * @throws {TypeError} If input is not a Buffer or string
+ * @throws {Error} If the buffer is empty, file doesn't exist, or format is unsupported
  * @returns Buffer containing image data in the specified format
  */
 export function convertRaw<F extends OutputFormat>(
-  rawImageBuffer: Buffer,
+  input: Buffer | string,
   format: F,
   options?: ConversionOptions & FormatQualityOptions[F]
 ): Buffer {
-  if (!Buffer.isBuffer(rawImageBuffer)) {
-    throw new TypeError('Input must be a Buffer');
+  if (!Buffer.isBuffer(input) && typeof input !== 'string') {
+    throw new TypeError('Input must be a Buffer or file path string');
   }
 
-  if (rawImageBuffer.length === 0) {
+  if (Buffer.isBuffer(input) && input.length === 0) {
     throw new Error('Input buffer is empty');
+  }
+
+  if (typeof input === 'string' && input.trim() === '') {
+    throw new Error('File path cannot be empty');
   }
 
   if (typeof format !== 'string' || format.trim() === '') {
@@ -211,7 +215,7 @@ export function convertRaw<F extends OutputFormat>(
   }
 
   return (addon as RawConverterAddon).convertRaw(
-    rawImageBuffer,
+    input,
     normalizedFormat,
     mergedOptions
   );
