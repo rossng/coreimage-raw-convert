@@ -3,6 +3,12 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { convertRaw, convertRawAsync, OutputFormat } from '../index.js';
 
+const convertOptions = {
+  lensCorrection: false,
+  preserveExifData: true,
+  quality: 0.85,
+};
+
 async function batchConvertRawsToJpeg(
   folderPath: string,
   useAsync: boolean = false,
@@ -60,11 +66,7 @@ async function batchConvertRawsToJpeg(
           const jpegBuffer = await convertRawAsync(
             inputPath,
             OutputFormat.JPEG,
-            {
-              lensCorrection: true,
-              preserveExifData: false,
-              quality: 0.85,
-            }
+            convertOptions
           );
 
           await fs.writeFile(outputPath, jpegBuffer.buffer);
@@ -110,11 +112,11 @@ async function batchConvertRawsToJpeg(
 
           const rawBuffer = await fs.readFile(inputPath);
 
-          const jpegBuffer = convertRaw(rawBuffer, OutputFormat.JPEG, {
-            lensCorrection: true,
-            preserveExifData: false,
-            quality: 0.85,
-          });
+          const jpegBuffer = convertRaw(
+            rawBuffer,
+            OutputFormat.JPEG,
+            convertOptions
+          );
 
           await fs.writeFile(outputPath, jpegBuffer.buffer);
           console.log(`✓ Converted ${file} → ${path.basename(outputPath)}`);
