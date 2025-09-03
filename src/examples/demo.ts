@@ -4,7 +4,7 @@ import {
   type ConversionOptions,
   type OutputFormat,
 } from '../index.js';
-import { loadSampleImage } from './load-image.js';
+import { loadArwImage, loadDngImage } from './load-image.js';
 
 const app = express();
 const PORT = 3000;
@@ -12,6 +12,7 @@ const PORT = 3000;
 interface ConvertRequest extends Request {
   body: ConversionOptions & {
     format?: OutputFormat;
+    inputFormat?: 'arw' | 'dng';
   };
 }
 
@@ -281,6 +282,14 @@ app.get('/', (_: Request, res: Response) => {
       </div>
       
       <div class="control-group">
+        <label for="inputFormat">Input Image</label>
+        <select id="inputFormat" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+          <option value="arw" selected>Sony ARW (ZV-E10)</option>
+          <option value="dng">DNG (DJI)</option>
+        </select>
+      </div>
+      
+      <div class="control-group">
         <label for="outputFormat">Output Format</label>
         <select id="outputFormat" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
           <option value="jpeg" selected>JPEG</option>
@@ -360,7 +369,8 @@ app.get('/', (_: Request, res: Response) => {
       document.getElementById('neutralTint').value = '';
       document.getElementById('scaleFactor').value = '1';
       
-      // Reset format dropdown
+      // Reset format dropdowns
+      document.getElementById('inputFormat').value = 'arw';
       document.getElementById('outputFormat').value = 'jpeg';
       
       // Update quality options visibility after reset
@@ -418,9 +428,11 @@ app.get('/', (_: Request, res: Response) => {
       btn.disabled = true;
       showStatus('Converting...', 'info');
       
+      const inputFormat = document.getElementById('inputFormat').value;
       const format = document.getElementById('outputFormat').value;
       
       const options = {
+        inputFormat: inputFormat,
         format: format,
         lensCorrection: document.getElementById('lensCorrection').checked,
         exposure: parseFloat(document.getElementById('exposure').value),
@@ -522,14 +534,19 @@ app.post(
   express.json(),
   (req: ConvertRequest, res: Response): void => {
     try {
-      const rawBuffer = loadSampleImage();
-      const { format = 'jpeg', ...options } = req.body || {};
+      const {
+        inputFormat = 'arw',
+        format = 'jpeg',
+        ...options
+      } = req.body || {};
 
-      const outputImage = convertRaw(
-        rawBuffer,
-        format as OutputFormat,
-        options
-      );
+      // Load the appropriate image based on inputFormat
+      const rawBuffer = inputFormat === 'dng' ? loadDngImage() : loadArwImage();
+
+      const outputImage = convertRaw(rawBuffer, format as OutputFormat, {
+        ...options,
+        inputFormat,
+      });
 
       // Set appropriate content type based on format
       const contentTypes: ContentTypeMap = {
