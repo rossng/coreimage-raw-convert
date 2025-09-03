@@ -238,6 +238,7 @@ async function benchmark(): Promise<void> {
       const conversionOptions: any = {
         lensCorrection: warmupConfig.lensCorrection,
         allowDraftMode: warmupConfig.allowDraftMode,
+        inputFormat: 'arw',
       };
 
       if (warmupConfig.boost !== undefined) {
@@ -302,6 +303,7 @@ async function benchmark(): Promise<void> {
               const conversionOptions: any = {
                 lensCorrection: config.lensCorrection,
                 allowDraftMode: config.allowDraftMode,
+                inputFormat: 'arw',
               };
 
               if (config.boost !== undefined) {

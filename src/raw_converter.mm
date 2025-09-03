@@ -31,6 +31,7 @@ struct InternalConversionOptions {
     bool optimizeColorForSharing = false;
     bool preserveExifData = true;
     bool extractMetadata = false;
+    std::string inputFormat;
 };
 
 // Helper function to extract metadata from CGImage source
@@ -276,7 +277,24 @@ void ConvertRawAsyncWorker::Execute() {
         
         // Write data to a temporary file because CIRAWFilter works better with file URLs
         NSString* tempPath = [NSTemporaryDirectory() stringByAppendingPathComponent:[[NSUUID UUID] UUIDString]];
-        tempPath = [tempPath stringByAppendingPathExtension:@"arw"];
+        // Use inputFormat if specified, otherwise use original file extension
+        NSString* fileExtension = nil;
+        if (!options_.inputFormat.empty()) {
+            // inputFormat takes precedence
+            fileExtension = [NSString stringWithUTF8String:options_.inputFormat.c_str()];
+        } else if (isFilePath_) {
+            // Fall back to original file extension
+            NSString* originalPath = [NSString stringWithUTF8String:filePath_.c_str()];
+            NSString* originalExt = [originalPath pathExtension];
+            if ([originalExt length] > 0) {
+                fileExtension = originalExt;
+            }
+        }
+        
+        // Only append extension if we have one
+        if (fileExtension && [fileExtension length] > 0) {
+            tempPath = [tempPath stringByAppendingPathExtension:fileExtension];
+        }
         
         NSError* writeError = nil;
         BOOL written = [imageData writeToFile:tempPath options:NSDataWritingAtomic error:&writeError];
@@ -674,6 +692,7 @@ NAN_METHOD(ConvertRaw) {
     bool optimizeColorForSharing = false;
     bool preserveExifData = true; // Default to true to preserve metadata
     bool extractMetadata = false;
+    std::string inputFormat;
     
     if (info.Length() >= 3 && info[2]->IsObject()) {
         Local<Object> options = info[2].As<Object>();
@@ -696,6 +715,18 @@ NAN_METHOD(ConvertRaw) {
                 Local<Value> value = Nan::Get(options, keyStr).ToLocalChecked();
                 if (value->IsNumber()) {
                     target = Nan::To<double>(value).FromJust();
+                }
+            }
+        };
+        
+        // Helper lambda to extract string option
+        auto getStringOption = [&](const char* key, std::string& target) {
+            Local<String> keyStr = Nan::New(key).ToLocalChecked();
+            if (Nan::Has(options, keyStr).FromJust()) {
+                Local<Value> value = Nan::Get(options, keyStr).ToLocalChecked();
+                if (value->IsString()) {
+                    Nan::Utf8String str(value);
+                    target = std::string(*str);
                 }
             }
         };
@@ -727,6 +758,7 @@ NAN_METHOD(ConvertRaw) {
         getBoolOption("optimizeColorForSharing", optimizeColorForSharing);
         getBoolOption("preserveExifData", preserveExifData);
         getBoolOption("extractMetadata", extractMetadata);
+        getStringOption("inputFormat", inputFormat);
     }
     
     // Determine input type and get NSData
@@ -769,7 +801,25 @@ NAN_METHOD(ConvertRaw) {
         
         // Write data to a temporary file because CIRAWFilter works better with file URLs
         NSString* tempPath = [NSTemporaryDirectory() stringByAppendingPathComponent:[[NSUUID UUID] UUIDString]];
-        tempPath = [tempPath stringByAppendingPathExtension:@"arw"];
+        // Use inputFormat if specified, otherwise use original file extension
+        NSString* fileExtension = nil;
+        if (!inputFormat.empty()) {
+            // inputFormat takes precedence
+            fileExtension = [NSString stringWithUTF8String:inputFormat.c_str()];
+        } else if (info[0]->IsString()) {
+            // Fall back to original file extension
+            Nan::Utf8String pathStr(info[0]);
+            NSString* originalPath = [NSString stringWithUTF8String:*pathStr];
+            NSString* originalExt = [originalPath pathExtension];
+            if ([originalExt length] > 0) {
+                fileExtension = originalExt;
+            }
+        }
+        
+        // Only append extension if we have one
+        if (fileExtension && [fileExtension length] > 0) {
+            tempPath = [tempPath stringByAppendingPathExtension:fileExtension];
+        }
         
         NSError* writeError = nil;
         BOOL written = [imageData writeToFile:tempPath options:NSDataWritingAtomic error:&writeError];
@@ -1135,6 +1185,18 @@ NAN_METHOD(ConvertRawAsync) {
             }
         };
         
+        // Helper lambda to extract string option
+        auto getStringOption = [&](const char* key, std::string& target) {
+            Local<String> keyStr = Nan::New(key).ToLocalChecked();
+            if (Nan::Has(optionsObj, keyStr).FromJust()) {
+                Local<Value> value = Nan::Get(optionsObj, keyStr).ToLocalChecked();
+                if (value->IsString()) {
+                    Nan::Utf8String str(value);
+                    target = std::string(*str);
+                }
+            }
+        };
+        
         // Extract all options
         getBoolOption("lensCorrection", options.lensCorrection);
         getNumberOption("exposure", options.exposure);
@@ -1162,6 +1224,7 @@ NAN_METHOD(ConvertRawAsync) {
         getBoolOption("optimizeColorForSharing", options.optimizeColorForSharing);
         getBoolOption("preserveExifData", options.preserveExifData);
         getBoolOption("extractMetadata", options.extractMetadata);
+        getStringOption("inputFormat", options.inputFormat);
     }
     
     // Create and queue the async worker

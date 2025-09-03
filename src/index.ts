@@ -181,6 +181,20 @@ export interface ConversionOptions {
 
   /** Extract and include image metadata in the output (default: false) */
   extractMetadata?: boolean;
+
+  /** Input RAW format (required when input is a Buffer, ignored for file paths) */
+  inputFormat?:
+    | 'arw'
+    | 'dng'
+    | 'cr2'
+    | 'nef'
+    | 'raf'
+    | 'orf'
+    | 'rw2'
+    | 'pef'
+    | 'srw'
+    | 'x3f'
+    | 'raw';
 }
 
 /**
@@ -222,7 +236,7 @@ interface RawConverterAddon {
  */
 export function convertRaw<F extends OutputFormat>(
   input: Buffer | string,
-  format: F,
+  outputFormat: F,
   options?: ConversionOptions & FormatQualityOptions[F]
 ): OutputImage {
   if (!Buffer.isBuffer(input) && typeof input !== 'string') {
@@ -237,17 +251,22 @@ export function convertRaw<F extends OutputFormat>(
     throw new Error('File path cannot be empty');
   }
 
-  if (typeof format !== 'string' || format.trim() === '') {
-    throw new TypeError('Format must be a non-empty string');
+  if (typeof outputFormat !== 'string' || outputFormat.trim() === '') {
+    throw new TypeError('Output format must be a non-empty string');
   }
 
-  const normalizedFormat = format.toLowerCase().trim() as F;
+  const normalizedFormat = outputFormat.toLowerCase().trim() as F;
   const supportedFormats = Object.values(OutputFormat);
 
   if (!supportedFormats.includes(normalizedFormat)) {
     throw new Error(
-      `Unsupported format: ${format}. Supported formats: ${supportedFormats.join(', ')}`
+      `Unsupported output format: ${outputFormat}. Supported formats: ${supportedFormats.join(', ')}`
     );
+  }
+
+  // Validate inputFormat for Buffer inputs
+  if (Buffer.isBuffer(input) && !options?.inputFormat) {
+    throw new Error('inputFormat is required when input is a Buffer');
   }
 
   // Handle options
@@ -275,7 +294,7 @@ export function convertRaw<F extends OutputFormat>(
  */
 export function convertRawAsync<F extends OutputFormat>(
   input: Buffer | string,
-  format: F,
+  outputFormat: F,
   options?: ConversionOptions & FormatQualityOptions[F]
 ): Promise<OutputImage> {
   return new Promise((resolve, reject) => {
@@ -295,20 +314,26 @@ export function convertRawAsync<F extends OutputFormat>(
       return;
     }
 
-    if (typeof format !== 'string' || format.trim() === '') {
-      reject(new TypeError('Format must be a non-empty string'));
+    if (typeof outputFormat !== 'string' || outputFormat.trim() === '') {
+      reject(new TypeError('Output format must be a non-empty string'));
       return;
     }
 
-    const normalizedFormat = format.toLowerCase().trim() as F;
+    const normalizedFormat = outputFormat.toLowerCase().trim() as F;
     const supportedFormats = Object.values(OutputFormat);
 
     if (!supportedFormats.includes(normalizedFormat)) {
       reject(
         new Error(
-          `Unsupported format: ${format}. Supported formats: ${supportedFormats.join(', ')}`
+          `Unsupported output format: ${outputFormat}. Supported formats: ${supportedFormats.join(', ')}`
         )
       );
+      return;
+    }
+
+    // Validate inputFormat for Buffer inputs
+    if (Buffer.isBuffer(input) && !options?.inputFormat) {
+      reject(new Error('inputFormat is required when input is a Buffer'));
       return;
     }
 

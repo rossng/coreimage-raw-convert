@@ -17,9 +17,25 @@ function findPackageRoot(startDir: string): string {
 }
 
 export function loadSampleImage() {
+  return loadArwImage();
+}
+
+export function loadArwImage() {
   const currentFile = fileURLToPath(import.meta.url);
   const packageRoot = findPackageRoot(path.dirname(currentFile));
   const rawPath = path.join(packageRoot, 'data', 'DSC00053.ARW');
+
+  if (!fs.existsSync(rawPath)) {
+    throw new Error(`${rawPath} not found in project root`);
+  }
+
+  return fs.readFileSync(rawPath);
+}
+
+export function loadDngImage() {
+  const currentFile = fileURLToPath(import.meta.url);
+  const packageRoot = findPackageRoot(path.dirname(currentFile));
+  const rawPath = path.join(packageRoot, 'data', 'DJI.DNG');
 
   if (!fs.existsSync(rawPath)) {
     throw new Error(`${rawPath} not found in project root`);

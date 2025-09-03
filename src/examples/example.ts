@@ -48,7 +48,7 @@ async function convertRawFile(
 
     // Convert to specified format
     console.log(`Converting RAW to ${format.toUpperCase()}...`);
-    const outputImage = convertRaw(rawBuffer, format);
+    const outputImage = convertRaw(rawBuffer, format, { inputFormat: 'arw' });
 
     // Write the output file
     fs.writeFileSync(outputPath, outputImage.buffer);

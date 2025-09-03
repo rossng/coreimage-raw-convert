@@ -32,17 +32,23 @@ import fs from 'fs';
 import { convertRaw, OutputFormat } from 'coreimage-raw-convert';
 
 // Convert to JPEG
-const rawBuffer = fs.readFileSync('photo.nef');
-const jpegBuffer = convertRaw(rawBuffer, OutputFormat.JPEG);
-fs.writeFileSync('photo.jpg', jpegBuffer);
+const rawBuffer = fs.readFileSync('photo.dng');
+const jpegResult = convertRaw(rawBuffer, OutputFormat.JPEG, {
+  inputFormat: 'dng',
+});
+fs.writeFileSync('photo.jpg', jpegResult.buffer);
 
 // Convert to PNG
-const pngBuffer = convertRaw(rawBuffer, OutputFormat.PNG);
-fs.writeFileSync('photo.png', pngBuffer);
+const pngResult = convertRaw(rawBuffer, OutputFormat.PNG, {
+  inputFormat: 'dng',
+});
+fs.writeFileSync('photo.png', pngResult.buffer);
 
 // Convert to TIFF
-const tiffBuffer = convertRaw(rawBuffer, OutputFormat.TIFF);
-fs.writeFileSync('photo.tif', tiffBuffer);
+const tiffResult = convertRaw(rawBuffer, OutputFormat.TIFF, {
+  inputFormat: 'dng',
+});
+fs.writeFileSync('photo.tif', tiffResult.buffer);
 ```
 
 ## Examples

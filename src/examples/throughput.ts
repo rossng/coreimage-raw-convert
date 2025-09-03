@@ -136,8 +136,14 @@ async function runThroughputBenchmark(): Promise<void> {
   // JIT warmup
   console.log('Warming up JIT...');
   for (let i = 0; i < 3; i++) {
-    convertRaw(rawBuffer, OutputFormat.JPEG, { scaleFactor: 0.25 });
-    await convertRawAsync(rawBuffer, OutputFormat.JPEG, { scaleFactor: 0.25 });
+    convertRaw(rawBuffer, OutputFormat.JPEG, {
+      scaleFactor: 0.25,
+      inputFormat: 'arw',
+    });
+    await convertRawAsync(rawBuffer, OutputFormat.JPEG, {
+      scaleFactor: 0.25,
+      inputFormat: 'arw',
+    });
   }
   console.log('JIT warmup complete.\n');
 
