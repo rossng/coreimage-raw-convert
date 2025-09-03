@@ -1,3 +1,15 @@
+# [4.0.0](https://github.com/rossng/coreimage-raw-convert/compare/v3.0.1...v4.0.0) (2025-09-03)
+
+
+### Features
+
+* add `inputFormat` specifier when using a `Buffer` as input ([0f08840](https://github.com/rossng/coreimage-raw-convert/commit/0f088400f9e26becf7ab3bc17bfd46c377d68e90))
+
+
+### BREAKING CHANGES
+
+* `inputFormat` is now required when supplying a `Buffer`
+
 ## [3.0.1](https://github.com/rossng/coreimage-raw-convert/compare/v3.0.0...v3.0.1) (2025-08-06)
 
 
