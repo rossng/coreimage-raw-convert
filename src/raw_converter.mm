@@ -68,6 +68,55 @@ static Local<Object> ExtractImageMetadata(CFDictionaryRef sourceMetadataRef, CGI
             if (fNumber) {
                 Nan::Set(metadata, Nan::New("fNumber").ToLocalChecked(), Nan::New<Number>([fNumber doubleValue]));
             }
+
+            // ISO speed
+            NSArray* isoSpeedRatings = exifDict[(NSString*)kCGImagePropertyExifISOSpeedRatings];
+            if (isoSpeedRatings && [isoSpeedRatings count] > 0) {
+                NSNumber* iso = isoSpeedRatings[0];
+                Nan::Set(metadata, Nan::New("iso").ToLocalChecked(), Nan::New<Number>([iso doubleValue]));
+            }
+
+            // Date/time original
+            NSString* dateTimeOriginal = exifDict[(NSString*)kCGImagePropertyExifDateTimeOriginal];
+            if (dateTimeOriginal) {
+                Nan::Set(metadata, Nan::New("dateTimeOriginal").ToLocalChecked(), Nan::New<String>([dateTimeOriginal UTF8String]).ToLocalChecked());
+            }
+
+            // Lens make
+            NSString* lensMake = exifDict[(NSString*)kCGImagePropertyExifLensMake];
+            if (lensMake) {
+                Nan::Set(metadata, Nan::New("lensMake").ToLocalChecked(), Nan::New<String>([lensMake UTF8String]).ToLocalChecked());
+            }
+
+            // Lens model
+            NSString* lensModel = exifDict[(NSString*)kCGImagePropertyExifLensModel];
+            if (lensModel) {
+                Nan::Set(metadata, Nan::New("lensModel").ToLocalChecked(), Nan::New<String>([lensModel UTF8String]).ToLocalChecked());
+            }
+
+            // Focal length (actual, not 35mm equivalent)
+            NSNumber* focalLength = exifDict[(NSString*)kCGImagePropertyExifFocalLength];
+            if (focalLength) {
+                Nan::Set(metadata, Nan::New("focalLength").ToLocalChecked(), Nan::New<Number>([focalLength doubleValue]));
+            }
+
+            // White balance mode
+            NSNumber* whiteBalance = exifDict[(NSString*)kCGImagePropertyExifWhiteBalance];
+            if (whiteBalance) {
+                Nan::Set(metadata, Nan::New("whiteBalance").ToLocalChecked(), Nan::New<Number>([whiteBalance intValue]));
+            }
+
+            // Exposure mode
+            NSNumber* exposureMode = exifDict[(NSString*)kCGImagePropertyExifExposureMode];
+            if (exposureMode) {
+                Nan::Set(metadata, Nan::New("exposureMode").ToLocalChecked(), Nan::New<Number>([exposureMode intValue]));
+            }
+
+            // Exposure bias
+            NSNumber* exposureBias = exifDict[(NSString*)kCGImagePropertyExifExposureBiasValue];
+            if (exposureBias) {
+                Nan::Set(metadata, Nan::New("exposureBias").ToLocalChecked(), Nan::New<Number>([exposureBias doubleValue]));
+            }
         }
         
         // Extract TIFF data (camera make/model)
@@ -83,6 +132,50 @@ static Local<Object> ExtractImageMetadata(CFDictionaryRef sourceMetadataRef, CGI
             NSString* model = tiffDict[(NSString*)kCGImagePropertyTIFFModel];
             if (model) {
                 Nan::Set(metadata, Nan::New("cameraModel").ToLocalChecked(), Nan::New<String>([model UTF8String]).ToLocalChecked());
+            }
+
+            // Software
+            NSString* software = tiffDict[(NSString*)kCGImagePropertyTIFFSoftware];
+            if (software) {
+                Nan::Set(metadata, Nan::New("software").ToLocalChecked(), Nan::New<String>([software UTF8String]).ToLocalChecked());
+            }
+
+            // Orientation
+            NSNumber* orientation = tiffDict[(NSString*)kCGImagePropertyTIFFOrientation];
+            if (orientation) {
+                Nan::Set(metadata, Nan::New("orientation").ToLocalChecked(), Nan::New<Number>([orientation intValue]));
+            }
+        }
+
+        // GPS data
+        NSDictionary* gpsDict = sourceMetadata[(NSString*)kCGImagePropertyGPSDictionary];
+        if (gpsDict) {
+            // Latitude
+            NSNumber* latitude = gpsDict[(NSString*)kCGImagePropertyGPSLatitude];
+            NSString* latitudeRef = gpsDict[(NSString*)kCGImagePropertyGPSLatitudeRef];
+            if (latitude && latitudeRef) {
+                double lat = [latitude doubleValue];
+                if ([latitudeRef isEqualToString:@"S"]) {
+                    lat = -lat;
+                }
+                Nan::Set(metadata, Nan::New("latitude").ToLocalChecked(), Nan::New<Number>(lat));
+            }
+
+            // Longitude
+            NSNumber* longitude = gpsDict[(NSString*)kCGImagePropertyGPSLongitude];
+            NSString* longitudeRef = gpsDict[(NSString*)kCGImagePropertyGPSLongitudeRef];
+            if (longitude && longitudeRef) {
+                double lon = [longitude doubleValue];
+                if ([longitudeRef isEqualToString:@"W"]) {
+                    lon = -lon;
+                }
+                Nan::Set(metadata, Nan::New("longitude").ToLocalChecked(), Nan::New<Number>(lon));
+            }
+
+            // Altitude
+            NSNumber* altitude = gpsDict[(NSString*)kCGImagePropertyGPSAltitude];
+            if (altitude) {
+                Nan::Set(metadata, Nan::New("altitude").ToLocalChecked(), Nan::New<Number>([altitude doubleValue]));
             }
         }
     }
@@ -247,6 +340,19 @@ private:
         double fNumber = -1;
         std::string cameraMake;
         std::string cameraModel;
+        double iso = -1;
+        std::string dateTimeOriginal;
+        std::string lensMake;
+        std::string lensModel;
+        double focalLength = -1;
+        int whiteBalance = -1;
+        int exposureMode = -1;
+        double exposureBias = -999;
+        std::string software;
+        int orientation = -1;
+        double latitude = -999;
+        double longitude = -999;
+        double altitude = -999;
         bool hasMetadata = false;
     } metadataStorage_;
 };
@@ -462,6 +568,47 @@ void ConvertRawAsyncWorker::Execute() {
                     if (fNumber) {
                         metadataStorage_.fNumber = [fNumber doubleValue];
                     }
+
+                    NSArray* isoSpeedRatings = exifDict[(NSString*)kCGImagePropertyExifISOSpeedRatings];
+                    if (isoSpeedRatings && [isoSpeedRatings count] > 0) {
+                        NSNumber* iso = isoSpeedRatings[0];
+                        metadataStorage_.iso = [iso doubleValue];
+                    }
+
+                    NSString* dateTimeOriginal = exifDict[(NSString*)kCGImagePropertyExifDateTimeOriginal];
+                    if (dateTimeOriginal) {
+                        metadataStorage_.dateTimeOriginal = [dateTimeOriginal UTF8String];
+                    }
+
+                    NSString* lensMake = exifDict[(NSString*)kCGImagePropertyExifLensMake];
+                    if (lensMake) {
+                        metadataStorage_.lensMake = [lensMake UTF8String];
+                    }
+
+                    NSString* lensModel = exifDict[(NSString*)kCGImagePropertyExifLensModel];
+                    if (lensModel) {
+                        metadataStorage_.lensModel = [lensModel UTF8String];
+                    }
+
+                    NSNumber* focalLength = exifDict[(NSString*)kCGImagePropertyExifFocalLength];
+                    if (focalLength) {
+                        metadataStorage_.focalLength = [focalLength doubleValue];
+                    }
+
+                    NSNumber* whiteBalance = exifDict[(NSString*)kCGImagePropertyExifWhiteBalance];
+                    if (whiteBalance) {
+                        metadataStorage_.whiteBalance = [whiteBalance intValue];
+                    }
+
+                    NSNumber* exposureMode = exifDict[(NSString*)kCGImagePropertyExifExposureMode];
+                    if (exposureMode) {
+                        metadataStorage_.exposureMode = [exposureMode intValue];
+                    }
+
+                    NSNumber* exposureBias = exifDict[(NSString*)kCGImagePropertyExifExposureBiasValue];
+                    if (exposureBias) {
+                        metadataStorage_.exposureBias = [exposureBias doubleValue];
+                    }
                 }
                 
                 // Extract TIFF data
@@ -475,6 +622,45 @@ void ConvertRawAsyncWorker::Execute() {
                     NSString* model = tiffDict[(NSString*)kCGImagePropertyTIFFModel];
                     if (model) {
                         metadataStorage_.cameraModel = [model UTF8String];
+                    }
+
+                    NSString* software = tiffDict[(NSString*)kCGImagePropertyTIFFSoftware];
+                    if (software) {
+                        metadataStorage_.software = [software UTF8String];
+                    }
+
+                    NSNumber* orientation = tiffDict[(NSString*)kCGImagePropertyTIFFOrientation];
+                    if (orientation) {
+                        metadataStorage_.orientation = [orientation intValue];
+                    }
+                }
+
+                // GPS data
+                NSDictionary* gpsDict = sourceMetadata[(NSString*)kCGImagePropertyGPSDictionary];
+                if (gpsDict) {
+                    NSNumber* latitude = gpsDict[(NSString*)kCGImagePropertyGPSLatitude];
+                    NSString* latitudeRef = gpsDict[(NSString*)kCGImagePropertyGPSLatitudeRef];
+                    if (latitude && latitudeRef) {
+                        double lat = [latitude doubleValue];
+                        if ([latitudeRef isEqualToString:@"S"]) {
+                            lat = -lat;
+                        }
+                        metadataStorage_.latitude = lat;
+                    }
+
+                    NSNumber* longitude = gpsDict[(NSString*)kCGImagePropertyGPSLongitude];
+                    NSString* longitudeRef = gpsDict[(NSString*)kCGImagePropertyGPSLongitudeRef];
+                    if (longitude && longitudeRef) {
+                        double lon = [longitude doubleValue];
+                        if ([longitudeRef isEqualToString:@"W"]) {
+                            lon = -lon;
+                        }
+                        metadataStorage_.longitude = lon;
+                    }
+
+                    NSNumber* altitude = gpsDict[(NSString*)kCGImagePropertyGPSAltitude];
+                    if (altitude) {
+                        metadataStorage_.altitude = [altitude doubleValue];
                     }
                 }
             }
@@ -626,7 +812,46 @@ void ConvertRawAsyncWorker::HandleOKCallback() {
         if (!metadataStorage_.cameraModel.empty()) {
             Nan::Set(metadata, Nan::New("cameraModel").ToLocalChecked(), Nan::New<String>(metadataStorage_.cameraModel).ToLocalChecked());
         }
-        
+        if (metadataStorage_.iso >= 0) {
+            Nan::Set(metadata, Nan::New("iso").ToLocalChecked(), Nan::New<Number>(metadataStorage_.iso));
+        }
+        if (!metadataStorage_.dateTimeOriginal.empty()) {
+            Nan::Set(metadata, Nan::New("dateTimeOriginal").ToLocalChecked(), Nan::New<String>(metadataStorage_.dateTimeOriginal).ToLocalChecked());
+        }
+        if (!metadataStorage_.lensMake.empty()) {
+            Nan::Set(metadata, Nan::New("lensMake").ToLocalChecked(), Nan::New<String>(metadataStorage_.lensMake).ToLocalChecked());
+        }
+        if (!metadataStorage_.lensModel.empty()) {
+            Nan::Set(metadata, Nan::New("lensModel").ToLocalChecked(), Nan::New<String>(metadataStorage_.lensModel).ToLocalChecked());
+        }
+        if (metadataStorage_.focalLength >= 0) {
+            Nan::Set(metadata, Nan::New("focalLength").ToLocalChecked(), Nan::New<Number>(metadataStorage_.focalLength));
+        }
+        if (metadataStorage_.whiteBalance >= 0) {
+            Nan::Set(metadata, Nan::New("whiteBalance").ToLocalChecked(), Nan::New<Number>(metadataStorage_.whiteBalance));
+        }
+        if (metadataStorage_.exposureMode >= 0) {
+            Nan::Set(metadata, Nan::New("exposureMode").ToLocalChecked(), Nan::New<Number>(metadataStorage_.exposureMode));
+        }
+        if (metadataStorage_.exposureBias > -999) {
+            Nan::Set(metadata, Nan::New("exposureBias").ToLocalChecked(), Nan::New<Number>(metadataStorage_.exposureBias));
+        }
+        if (!metadataStorage_.software.empty()) {
+            Nan::Set(metadata, Nan::New("software").ToLocalChecked(), Nan::New<String>(metadataStorage_.software).ToLocalChecked());
+        }
+        if (metadataStorage_.orientation >= 0) {
+            Nan::Set(metadata, Nan::New("orientation").ToLocalChecked(), Nan::New<Number>(metadataStorage_.orientation));
+        }
+        if (metadataStorage_.latitude > -999) {
+            Nan::Set(metadata, Nan::New("latitude").ToLocalChecked(), Nan::New<Number>(metadataStorage_.latitude));
+        }
+        if (metadataStorage_.longitude > -999) {
+            Nan::Set(metadata, Nan::New("longitude").ToLocalChecked(), Nan::New<Number>(metadataStorage_.longitude));
+        }
+        if (metadataStorage_.altitude > -999) {
+            Nan::Set(metadata, Nan::New("altitude").ToLocalChecked(), Nan::New<Number>(metadataStorage_.altitude));
+        }
+
         Nan::Set(outputImage, Nan::New("metadata").ToLocalChecked(), metadata);
     }
     

@@ -85,14 +85,40 @@ export interface ImageMetadata {
   height?: number;
   /** 35mm equivalent focal length in mm */
   focalLength35mm?: number;
+  /** Actual focal length in mm */
+  focalLength?: number;
   /** Shutter speed in seconds (e.g., 0.008 for 1/125s) */
   shutterSpeed?: number;
   /** F-number (aperture) */
   fNumber?: number;
+  /** ISO speed rating */
+  iso?: number;
+  /** Exposure bias in EV */
+  exposureBias?: number;
+  /** Exposure mode (0=auto, 1=manual, 2=auto bracket) */
+  exposureMode?: number;
+  /** White balance mode (0=auto, 1=manual) */
+  whiteBalance?: number;
   /** Camera make */
   cameraMake?: string;
   /** Camera model */
   cameraModel?: string;
+  /** Lens make */
+  lensMake?: string;
+  /** Lens model */
+  lensModel?: string;
+  /** Original capture date/time (EXIF format: "YYYY:MM:DD HH:MM:SS") */
+  dateTimeOriginal?: string;
+  /** Software used to process the image */
+  software?: string;
+  /** Image orientation (1-8, EXIF orientation values) */
+  orientation?: number;
+  /** GPS latitude in decimal degrees (negative for South) */
+  latitude?: number;
+  /** GPS longitude in decimal degrees (negative for West) */
+  longitude?: number;
+  /** GPS altitude in meters */
+  altitude?: number;
 }
 
 /**
