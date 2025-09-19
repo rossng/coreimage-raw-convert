@@ -1,3 +1,10 @@
+# [4.1.0](https://github.com/rossng/coreimage-raw-convert/compare/v4.0.0...v4.1.0) (2025-09-19)
+
+
+### Features
+
+* extract various extra EXIF fields ([580e9c5](https://github.com/rossng/coreimage-raw-convert/commit/580e9c5cbcc1b09a91932a798eb43052d4744787))
+
 # [4.0.0](https://github.com/rossng/coreimage-raw-convert/compare/v3.0.1...v4.0.0) (2025-09-03)
 
 
