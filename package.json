@@ -28,7 +28,8 @@
     "async-demo": "npm run build:ts && node dist/examples/async-demo.js",
     "benchmark": "npm run build:ts && node dist/examples/benchmark.js",
     "batch-convert": "npm run build:ts && node dist/examples/batch-convert.js",
-    "throughput": "npm run build:ts && node dist/examples/throughput.js"
+    "throughput": "npm run build:ts && node dist/examples/throughput.js",
+    "print-metadata": "npm run build:ts && node dist/examples/print-metadata.js"
   },
   "keywords": [
     "raw",
