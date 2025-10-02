@@ -1,3 +1,10 @@
+# [4.2.0](https://github.com/rossng/coreimage-raw-convert/compare/v4.1.0...v4.2.0) (2025-10-02)
+
+
+### Features
+
+* add body and lens serial number to metadata extraction ([4fa0b19](https://github.com/rossng/coreimage-raw-convert/commit/4fa0b19fd04c7a0d0ead2d8e83d2327736df433e))
+
 # [4.1.0](https://github.com/rossng/coreimage-raw-convert/compare/v4.0.0...v4.1.0) (2025-09-19)
 
 
