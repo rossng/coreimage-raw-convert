@@ -117,6 +117,18 @@ static Local<Object> ExtractImageMetadata(CFDictionaryRef sourceMetadataRef, CGI
             if (exposureBias) {
                 Nan::Set(metadata, Nan::New("exposureBias").ToLocalChecked(), Nan::New<Number>([exposureBias doubleValue]));
             }
+
+            // Body serial number
+            NSString* bodySerialNumber = exifDict[(NSString*)kCGImagePropertyExifBodySerialNumber];
+            if (bodySerialNumber) {
+                Nan::Set(metadata, Nan::New("bodySerialNumber").ToLocalChecked(), Nan::New<String>([bodySerialNumber UTF8String]).ToLocalChecked());
+            }
+
+            // Lens serial number
+            NSString* lensSerialNumber = exifDict[(NSString*)kCGImagePropertyExifLensSerialNumber];
+            if (lensSerialNumber) {
+                Nan::Set(metadata, Nan::New("lensSerialNumber").ToLocalChecked(), Nan::New<String>([lensSerialNumber UTF8String]).ToLocalChecked());
+            }
         }
         
         // Extract TIFF data (camera make/model)
@@ -353,6 +365,8 @@ private:
         double latitude = -999;
         double longitude = -999;
         double altitude = -999;
+        std::string bodySerialNumber;
+        std::string lensSerialNumber;
         bool hasMetadata = false;
     } metadataStorage_;
 };
@@ -609,6 +623,16 @@ void ConvertRawAsyncWorker::Execute() {
                     if (exposureBias) {
                         metadataStorage_.exposureBias = [exposureBias doubleValue];
                     }
+
+                    NSString* bodySerialNumber = exifDict[(NSString*)kCGImagePropertyExifBodySerialNumber];
+                    if (bodySerialNumber) {
+                        metadataStorage_.bodySerialNumber = [bodySerialNumber UTF8String];
+                    }
+
+                    NSString* lensSerialNumber = exifDict[(NSString*)kCGImagePropertyExifLensSerialNumber];
+                    if (lensSerialNumber) {
+                        metadataStorage_.lensSerialNumber = [lensSerialNumber UTF8String];
+                    }
                 }
                 
                 // Extract TIFF data
@@ -850,6 +874,12 @@ void ConvertRawAsyncWorker::HandleOKCallback() {
         }
         if (metadataStorage_.altitude > -999) {
             Nan::Set(metadata, Nan::New("altitude").ToLocalChecked(), Nan::New<Number>(metadataStorage_.altitude));
+        }
+        if (!metadataStorage_.bodySerialNumber.empty()) {
+            Nan::Set(metadata, Nan::New("bodySerialNumber").ToLocalChecked(), Nan::New<String>(metadataStorage_.bodySerialNumber).ToLocalChecked());
+        }
+        if (!metadataStorage_.lensSerialNumber.empty()) {
+            Nan::Set(metadata, Nan::New("lensSerialNumber").ToLocalChecked(), Nan::New<String>(metadataStorage_.lensSerialNumber).ToLocalChecked());
         }
 
         Nan::Set(outputImage, Nan::New("metadata").ToLocalChecked(), metadata);
