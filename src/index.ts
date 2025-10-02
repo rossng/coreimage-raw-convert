@@ -107,6 +107,10 @@ export interface ImageMetadata {
   lensMake?: string;
   /** Lens model */
   lensModel?: string;
+  /** Lens serial number */
+  lensSerialNumber?: string;
+  /** Camera body serial number */
+  bodySerialNumber?: string;
   /** Original capture date/time (EXIF format: "YYYY:MM:DD HH:MM:SS") */
   dateTimeOriginal?: string;
   /** Software used to process the image */
